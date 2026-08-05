@@ -148,6 +148,114 @@ npm run prisma:studio
 - `/audit`, `/settings`, `/sandbox` (dev)
 - `/checkout/success|pending|canceled|error`
 
+## Deploy do backend na Vercel
+
+> **Root Directory na Vercel:** `apps/api`  
+> **Framework detectado:** NestJS (zero config — [documentação oficial](https://vercel.com/docs/frameworks/backend/nestjs))  
+> **Sem prefixo global** — rotas públicas: `GET /health` e `POST /webhooks/asaas`
+
+### Passo a passo
+
+1. Faça push do repositório para o GitHub.
+2. Abra [vercel.com/new](https://vercel.com/new) e importe o repositório.
+3. Em **Root Directory**, selecione `apps/api`.
+4. Confirme que o framework **NestJS** foi detectado automaticamente.
+5. Adicione as variáveis de ambiente:
+
+```env
+NODE_ENV=production
+ASAAS_ENV=sandbox
+ASAAS_API_URL=https://api-sandbox.asaas.com/v3
+ASAAS_API_KEY=valor_sandbox
+ASAAS_WEBHOOK_AUTH_TOKEN=token_gerado_no_painel
+```
+
+6. Para uso completo (auth, dashboard, Prisma), adicione também:
+
+```env
+DATABASE_URL=postgresql://...
+JWT_SECRET=valor-seguro-aleatorio
+WEB_URL=https://seu-frontend.vercel.app
+```
+
+7. Faça o primeiro deploy.
+8. Copie o **domínio estável de produção** (ex.: `https://nome-do-projeto.vercel.app`).
+9. Teste o health check:
+
+```bash
+curl https://nome-do-projeto.vercel.app/health
+```
+
+10. Defina a URL do webhook:
+
+```env
+ASAAS_WEBHOOK_URL=https://nome-do-projeto.vercel.app/webhooks/asaas
+```
+
+11. Adicione `ASAAS_WEBHOOK_URL` nas variáveis da Vercel e faça redeploy se necessário.
+12. Cadastre a mesma URL no painel Sandbox do Asaas.
+
+> Use o domínio **Production**, não URLs temporárias de Preview Deployment.
+
+### Migrations Prisma
+
+O `prisma generate` roda automaticamente no `postinstall`. Migrations **não** rodam no deploy — execute manualmente:
+
+```bash
+cd apps/api
+npx prisma migrate deploy
+```
+
+### Comandos para teste
+
+**Health local** (porta padrão `3001`, ou `API_PORT` se definido):
+
+```bash
+curl http://localhost:3001/health
+```
+
+**Webhook local:**
+
+```bash
+curl -i -X POST http://localhost:3001/webhooks/asaas \
+  -H "Content-Type: application/json" \
+  -H "asaas-access-token: SEU_TOKEN_LOCAL" \
+  -d '{
+    "id": "evt_test_001",
+    "event": "PAYMENT_CONFIRMED",
+    "payment": {
+      "id": "pay_test_001",
+      "subscription": "sub_test_001",
+      "status": "CONFIRMED",
+      "value": 99.90
+    }
+  }'
+```
+
+**Health em produção:**
+
+```bash
+curl https://nome-do-projeto.vercel.app/health
+```
+
+**Webhook em produção:**
+
+```bash
+curl -i -X POST https://nome-do-projeto.vercel.app/webhooks/asaas \
+  -H "Content-Type: application/json" \
+  -H "asaas-access-token: SEU_TOKEN" \
+  -d '{
+    "id": "evt_test_002",
+    "event": "PAYMENT_RECEIVED",
+    "payment": {
+      "id": "pay_test_002",
+      "status": "RECEIVED"
+    }
+  }'
+```
+
+Resposta esperada: `HTTP/2 200` com `{ "received": true, "eventId": "evt_test_002" }`.
+
 ## Evoluindo o lab
 
 Sugestões para próximos passos:

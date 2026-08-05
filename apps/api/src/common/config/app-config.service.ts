@@ -9,12 +9,19 @@ export class AppConfigService {
     return this.config.get<string>('NODE_ENV', 'development');
   }
 
+  /** PORT (Vercel) → API_PORT (legado) → 3001 */
+  get port() {
+    const raw = this.config.get<string>('PORT') ?? this.config.get<string>('API_PORT') ?? '3001';
+    return Number.parseInt(raw, 10);
+  }
+
+  /** @deprecated use port */
   get apiPort() {
-    return this.config.get<number>('API_PORT', 3333);
+    return this.port;
   }
 
   get apiUrl() {
-    return this.config.get<string>('API_URL', 'http://localhost:3333');
+    return this.config.get<string>('API_URL', `http://localhost:${this.port}`);
   }
 
   get webUrl() {
@@ -22,7 +29,7 @@ export class AppConfigService {
   }
 
   get jwtSecret() {
-    return this.config.getOrThrow<string>('JWT_SECRET');
+    return this.config.get<string>('JWT_SECRET', 'local-dev-only-change-me');
   }
 
   get jwtExpiresIn() {
@@ -33,12 +40,28 @@ export class AppConfigService {
     return this.config.get<string>('PAYMENT_PROVIDER', 'asaas');
   }
 
-  get asaasEnvironment() {
-    return this.config.get<string>('ASAAS_ENVIRONMENT', 'sandbox');
+  get asaasEnv() {
+    return (
+      this.config.get<string>('ASAAS_ENV') ??
+      this.config.get<string>('ASAAS_ENVIRONMENT', 'sandbox')
+    );
   }
 
+  /** @deprecated use asaasEnv */
+  get asaasEnvironment() {
+    return this.asaasEnv;
+  }
+
+  get asaasApiUrl() {
+    return (
+      this.config.get<string>('ASAAS_API_URL') ??
+      this.config.get<string>('ASAAS_BASE_URL', 'https://api-sandbox.asaas.com/v3')
+    );
+  }
+
+  /** @deprecated use asaasApiUrl */
   get asaasBaseUrl() {
-    return this.config.getOrThrow<string>('ASAAS_BASE_URL');
+    return this.asaasApiUrl;
   }
 
   get asaasApiKey() {
@@ -49,11 +72,27 @@ export class AppConfigService {
     return this.config.get<string>('ASAAS_WEBHOOK_AUTH_TOKEN', '');
   }
 
+  get asaasWebhookUrl() {
+    return this.config.get<string>('ASAAS_WEBHOOK_URL', '');
+  }
+
+  get databaseUrl() {
+    return this.config.get<string>('DATABASE_URL', '');
+  }
+
+  get hasDatabase() {
+    return Boolean(this.databaseUrl);
+  }
+
   get logLevel() {
     return this.config.get<string>('LOG_LEVEL', 'debug');
   }
 
   get isDevelopment() {
     return this.nodeEnv === 'development';
+  }
+
+  get isVercel() {
+    return Boolean(process.env.VERCEL);
   }
 }

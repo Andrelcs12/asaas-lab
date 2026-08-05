@@ -72,6 +72,7 @@ export class WebhooksService {
 
   @Cron(CronExpression.EVERY_30_SECONDS)
   async processPendingEvents() {
+    if (!this.config.hasDatabase) return;
     if (this.processing) return;
     this.processing = true;
 

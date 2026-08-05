@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "nest build && nest start --watch --path tsconfig.build.json",
+    "start:dev": "nest build && nest start --watch --path tsconfig.build.json",
     "build": "nest build",
     "start": "node dist/main.js",
+    "start:prod": "node dist/main.js",
+    "postinstall": "prisma generate",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -42,12 +45,14 @@
   "devDependencies": {
     "@nestjs/cli": "^11.0.6",
     "@nestjs/testing": "^11.0.12",
+    "@swc/core": "^1.15.47",
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^22.13.10",
     "@types/passport-jwt": "^4.0.1",
     "prisma": "^6.5.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
+    "unplugin-swc": "^1.5.10",
     "vitest": "^3.0.9"
   },
   "prisma": {

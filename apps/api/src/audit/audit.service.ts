@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { sanitizeForLog } from '@asaas-lab/shared';
 
@@ -26,7 +27,7 @@ export class AuditService {
         entityType: params.entityType,
         entityId: params.entityId,
         correlationId: params.correlationId,
-        metadata: sanitized,
+        metadata: sanitized as Prisma.InputJsonValue | undefined,
         ipAddress: params.ipAddress,
       },
     });

@@ -13,7 +13,7 @@ import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { AsaasModule } from './asaas/asaas.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
-import { AppConfigService } from './common/config/app-config.service';
+import { AppConfigModule } from './common/config/app-config.module';
 import { validateEnv } from './common/config/env.validation';
 
 @Module({
@@ -23,6 +23,7 @@ import { validateEnv } from './common/config/env.validation';
       envFilePath: ['../../.env', '.env'],
       validate: validateEnv,
     }),
+    AppConfigModule,
     ScheduleModule.forRoot(),
     PrismaModule,
     AuditModule,
@@ -37,7 +38,5 @@ import { validateEnv } from './common/config/env.validation';
     AdminModule,
     HealthModule,
   ],
-  providers: [AppConfigService],
-  exports: [AppConfigService],
 })
 export class AppModule {}

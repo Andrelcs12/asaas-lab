@@ -1,28 +1,11 @@
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyHelmet from '@fastify/helmet';
-import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { AppConfigService } from './common/config/app-config.service';
 
-let cachedApp: NestFastifyApplication | undefined;
-
-export function resetAppCache(): void {
-  cachedApp = undefined;
-}
-
-export async function createApp(): Promise<NestFastifyApplication> {
-  if (cachedApp) {
-    return cachedApp;
-  }
-
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter({ logger: false }),
-  );
-
+export async function configureApp(app: NestFastifyApplication): Promise<void> {
   const config = app.get(AppConfigService);
 
   await app.register(fastifyHelmet);
@@ -54,17 +37,4 @@ export async function createApp(): Promise<NestFastifyApplication> {
 
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
-
-  cachedApp = app;
-  return app;
-}
-
-export async function bootstrap(): Promise<void> {
-  const app = await createApp();
-  const config = app.get(AppConfigService);
-  const port = config.port;
-
-  await app.listen(port, '0.0.0.0');
-  console.log(`API running on http://localhost:${port}`);
-  console.log(`Swagger on http://localhost:${port}/docs`);
 }

@@ -42,7 +42,7 @@ export default function SubscriptionDetailPage() {
     onSuccess: () => { toast.success('Reconciliação concluída'); qc.invalidateQueries({ queryKey: ['subscription', id] }); },
   });
 
-  if (isLoading) return <p className="text-zinc-400">Carregando...</p>;
+  if (isLoading) return <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>;
 
   return (
     <div>

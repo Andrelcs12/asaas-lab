@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/status-badge';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 export default function CheckoutCallbackPage({ variant }: { variant: 'success' | 'pending' | 'canceled' | 'error' }) {
   const params = useSearchParams();
@@ -42,11 +43,14 @@ export default function CheckoutCallbackPage({ variant }: { variant: 'success' |
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 p-4">
+    <div className="relative flex min-h-screen items-center justify-center bg-zinc-50 p-4 dark:bg-zinc-950">
+      <div className="absolute right-4 top-4">
+        <ThemeToggle />
+      </div>
       <Card className="w-full max-w-lg">
         <CardHeader><CardTitle>{titles[variant]}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-zinc-400">
+          <p className="text-zinc-600 dark:text-zinc-400">
             Recebemos o retorno do Checkout. Estamos confirmando o pagamento com o Asaas.
           </p>
           <p className="text-sm text-zinc-500">Referência: {ref ?? '—'}</p>

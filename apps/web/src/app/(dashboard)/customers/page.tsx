@@ -35,7 +35,7 @@ export default function CustomersPage() {
         }
       />
       {isLoading ? (
-        <p className="text-zinc-400">Carregando...</p>
+        <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>
       ) : !data?.data.length ? (
         <EmptyState title="Nenhum cliente" description="Cadastre o primeiro cliente do laboratório." />
       ) : (
@@ -44,7 +44,7 @@ export default function CustomersPage() {
             <Card key={customer.id}>
               <CardContent className="flex flex-wrap items-center justify-between gap-4 p-5">
                 <div>
-                  <Link href={`/customers/${customer.id}`} className="font-medium text-zinc-100 hover:text-emerald-400">
+                  <Link href={`/customers/${customer.id}`} className="font-medium text-zinc-900 hover:text-emerald-600 dark:text-zinc-100 dark:hover:text-emerald-400">
                     {customer.name}
                   </Link>
                   <p className="text-sm text-zinc-500">{customer.email}</p>

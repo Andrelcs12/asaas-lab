@@ -22,7 +22,7 @@ export function ExternalIdField({ label, value }: { label: string; value?: strin
   if (!value) return <span className="text-zinc-500">—</span>;
   return (
     <div className="flex items-center gap-2">
-      <code className="rounded-lg bg-zinc-950 px-2 py-1 text-xs text-zinc-300">{value}</code>
+      <code className="rounded-lg bg-zinc-100 px-2 py-1 text-xs text-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">{value}</code>
       <CopyButton value={value} label={`Copiar ${label}`} />
     </div>
   );

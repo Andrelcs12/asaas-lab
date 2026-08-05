@@ -18,7 +18,7 @@ export default function SubscriptionsPage() {
     <div>
       <PageHeader title="Assinaturas" description="Recorrências mensais controladas pelo Asaas" />
       {isLoading ? (
-        <p className="text-zinc-400">Carregando...</p>
+        <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>
       ) : !data?.data?.length ? (
         <EmptyState title="Nenhuma assinatura" />
       ) : (

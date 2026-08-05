@@ -18,7 +18,7 @@ export default function WebhooksPage() {
     <div>
       <PageHeader title="Webhooks" description="Eventos recebidos do Asaas — fila persistida em PostgreSQL" />
       {isLoading ? (
-        <p className="text-zinc-400">Carregando...</p>
+        <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>
       ) : !data?.data?.length ? (
         <EmptyState title="Nenhum webhook" />
       ) : (

@@ -31,7 +31,7 @@ export default function PaymentDetailPage() {
     },
   });
 
-  if (isLoading) return <p className="text-zinc-400">Carregando...</p>;
+  if (isLoading) return <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>;
 
   return (
     <div>

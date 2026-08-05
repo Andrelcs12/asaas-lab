@@ -32,7 +32,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (isLoading) return <div className="text-zinc-400">Carregando dashboard...</div>;
+  if (isLoading) return <div className="text-zinc-500 dark:text-zinc-400">Carregando dashboard...</div>;
 
   return (
     <div>
@@ -76,7 +76,7 @@ export default function DashboardPage() {
               <p className="text-sm text-zinc-500">Nenhum pagamento.</p>
             ) : (
               data.recentPayments.map((p) => (
-                <Link key={p.id} href={`/payments/${p.id}`} className="block rounded-xl border border-zinc-800 p-3 hover:border-emerald-800">
+                <Link key={p.id} href={`/payments/${p.id}`} className="block rounded-xl border border-zinc-200 p-3 hover:border-emerald-400 dark:border-zinc-800 dark:hover:border-emerald-800">
                   <div className="flex justify-between">
                     <span className="text-sm">{(p as { customer?: { name: string } }).customer?.name ?? p.id.slice(0, 8)}</span>
                     <StatusBadge status={p.internalStatus} />
@@ -95,7 +95,7 @@ export default function DashboardPage() {
               <p className="text-sm text-zinc-500">Nenhum evento.</p>
             ) : (
               data.recentEvents.map((event) => (
-                <Link key={event.id} href={`/webhooks/${event.id}`} className="flex justify-between rounded-xl border border-zinc-800 p-3 hover:border-emerald-800">
+                <Link key={event.id} href={`/webhooks/${event.id}`} className="flex justify-between rounded-xl border border-zinc-200 p-3 hover:border-emerald-400 dark:border-zinc-800 dark:hover:border-emerald-800">
                   <div>
                     <p className="text-sm font-medium">{event.eventType}</p>
                     <p className="text-xs text-zinc-500">{formatDate(event.receivedAt)}</p>

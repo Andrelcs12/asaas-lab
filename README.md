@@ -201,6 +201,12 @@ ASAAS_WEBHOOK_URL=https://nome-do-projeto.vercel.app/webhooks/asaas
 
 Esse erro ocorre quando a Vercel trata a API como site estático (Framework = Other + Output Directory = `public`). O arquivo `apps/api/vercel.json` corrige isso forçando `"framework": "nestjs"`. Se persistir, limpe manualmente o **Output Directory** nas configurações do projeto na Vercel.
 
+### Erro "exited with 127" no build
+
+Exit code **127** significa que um comando do build não foi encontrado (`tsc`, `nest` ou `prisma`). Isso acontece quando `NODE_ENV=production` está definido nas variáveis da Vercel: o npm instala só `dependencies` e ignora `devDependencies`, onde ficam as ferramentas de build.
+
+O `apps/api/vercel.json` usa `npm ci --include=dev` no install para contornar isso. Se o erro persistir, confirme que o **Install Command** do projeto não foi sobrescrito manualmente nas configurações da Vercel.
+
 > Use o domínio **Production**, não URLs temporárias de Preview Deployment.
 
 ### Migrations Prisma

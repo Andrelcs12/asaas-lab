@@ -31,8 +31,8 @@ export default function CustomerDetailPage() {
     onError: () => toast.error('Falha na sincronização'),
   });
 
-  if (isLoading) return <p className="text-zinc-400">Carregando...</p>;
-  if (!customer) return <p className="text-zinc-400">Cliente não encontrado.</p>;
+  if (isLoading) return <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>;
+  if (!customer) return <p className="text-zinc-500 dark:text-zinc-400">Cliente não encontrado.</p>;
 
   return (
     <div>
@@ -63,7 +63,7 @@ export default function CustomerDetailPage() {
           <CardHeader><CardTitle>Pagamentos recentes</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             {customer.payments?.length ? customer.payments.map((p: { id: string; internalStatus: string; value: number }) => (
-              <div key={p.id} className="flex justify-between rounded-lg bg-zinc-950 p-3">
+              <div key={p.id} className="flex justify-between rounded-lg bg-zinc-100 p-3 dark:bg-zinc-950">
                 <StatusBadge status={p.internalStatus} />
                 <span className="font-mono text-emerald-400">R$ {Number(p.value).toFixed(2)}</span>
               </div>

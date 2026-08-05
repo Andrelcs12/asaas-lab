@@ -67,7 +67,7 @@ export default function SandboxPage() {
         <Card className="lg:col-span-2">
           <CardHeader><CardTitle>Últimos Checkouts</CardTitle></CardHeader>
           <CardContent>
-            <pre className="overflow-auto rounded-xl bg-zinc-950 p-4 text-xs dark:bg-zinc-900">
+            <pre className="overflow-auto rounded-xl bg-zinc-100 p-4 text-xs text-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
               {JSON.stringify(data?.lastCheckouts ?? [], null, 2)}
             </pre>
           </CardContent>

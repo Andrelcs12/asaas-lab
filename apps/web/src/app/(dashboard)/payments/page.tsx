@@ -30,7 +30,7 @@ export default function PaymentsPage() {
         }
       />
       {isLoading ? (
-        <p className="text-zinc-400">Carregando...</p>
+        <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>
       ) : !data?.data?.length ? (
         <EmptyState title="Nenhum pagamento" />
       ) : (

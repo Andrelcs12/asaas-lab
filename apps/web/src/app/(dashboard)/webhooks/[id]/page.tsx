@@ -29,7 +29,7 @@ export default function WebhookDetailPage() {
     },
   });
 
-  if (isLoading) return <p className="text-zinc-400">Carregando...</p>;
+  if (isLoading) return <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>;
 
   return (
     <div>
@@ -43,7 +43,7 @@ export default function WebhookDetailPage() {
           <p><span className="text-zinc-500">Recebido:</span> {formatDate(event.receivedAt)}</p>
           <p><span className="text-zinc-500">Processado:</span> {formatDate(event.processedAt)}</p>
           {event.lastError && <p className="text-red-400">{event.lastError}</p>}
-          <pre className="overflow-auto rounded-xl bg-zinc-950 p-4 text-xs text-zinc-300">
+          <pre className="overflow-auto rounded-xl bg-zinc-100 p-4 text-xs text-zinc-800 dark:bg-zinc-950 dark:text-zinc-300">
             {JSON.stringify(event.payload, null, 2)}
           </pre>
         </CardContent>

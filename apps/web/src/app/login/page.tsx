@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FlaskConical } from 'lucide-react';
 import { toast } from 'sonner';
@@ -16,9 +16,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState('Lab@123456');
   const [submitting, setSubmitting] = useState(false);
 
-  if (!loading && user) {
-    router.replace('/dashboard');
-  }
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [loading, user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

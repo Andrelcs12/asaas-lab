@@ -159,8 +159,9 @@ npm run prisma:studio
 4. Em **Project Settings → General**, ative **Include source files outside of the Root Directory in the Build Step** (obrigatório para o monorepo `@asaas-lab/shared`).
 5. Em **Build & Development Settings**, confirme:
    - **Framework Preset:** NestJS (ou deixe o `vercel.json` sobrescrever)
+   - **Node.js Version:** 20.x ou superior
    - **Output Directory:** vazio / padrão — **não** use `public`
-   - **Install Command** e **Build Command:** deixe o `apps/api/vercel.json` controlar
+   - **Install Command** e **Build Command:** deixe o `apps/api/vercel.json` controlar (não sobrescreva manualmente)
 6. Confirme que o framework **NestJS** foi detectado (não "Other").
 7. Adicione as variáveis de ambiente:
 

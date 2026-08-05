@@ -37,14 +37,14 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-zinc-50 p-4 dark:bg-zinc-950">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-950">
-            <FlaskConical className="h-6 w-6 text-emerald-600 dark:text-emerald-500" />
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10">
+            <FlaskConical className="h-6 w-6 text-primary" />
           </div>
           <CardTitle>Asaas Payment Lab</CardTitle>
           <CardDescription>Laboratório de integração com o Sandbox do Asaas</CardDescription>
@@ -76,7 +76,7 @@ export default function LoginPage() {
               {submitting ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-          <p className="mt-4 text-center text-xs text-zinc-500">
+          <p className="mt-4 text-center text-xs text-muted-foreground">
             Seed local: admin@lab.local / Lab@123456
           </p>
         </CardContent>

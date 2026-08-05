@@ -43,20 +43,20 @@ export default function CheckoutCallbackPage({ variant }: { variant: 'success' |
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center bg-zinc-50 p-4 dark:bg-zinc-950">
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4">
       <div className="absolute right-4 top-4">
         <ThemeToggle />
       </div>
       <Card className="w-full max-w-lg">
         <CardHeader><CardTitle>{titles[variant]}</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-muted-foreground">
             Recebemos o retorno do Checkout. Estamos confirmando o pagamento com o Asaas.
           </p>
-          <p className="text-sm text-zinc-500">Referência: {ref ?? '—'}</p>
+          <p className="text-sm text-muted-foreground">Referência: {ref ?? '—'}</p>
           {status && <StatusBadge status={status} />}
           {attempts >= 12 && !status && (
-            <p className="text-amber-400 text-sm">Confirmação ainda não recebida. Aguarde o webhook ou reconcilie manualmente.</p>
+            <p className="text-sm text-amber-600 dark:text-amber-400">Confirmação ainda não recebida. Aguarde o webhook ou reconcilie manualmente.</p>
           )}
           <Button asChild><Link href="/dashboard">Voltar ao dashboard</Link></Button>
         </CardContent>

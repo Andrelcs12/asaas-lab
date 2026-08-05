@@ -13,16 +13,16 @@ export function CopyButton({ value, label }: { value: string; label?: string }) 
 
   return (
     <Button variant="ghost" size="sm" onClick={copy} title={label ?? 'Copiar'}>
-      {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+      {copied ? <Check className="h-4 w-4 text-primary" /> : <Copy className="h-4 w-4" />}
     </Button>
   );
 }
 
 export function ExternalIdField({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return <span className="text-zinc-500">—</span>;
+  if (!value) return <span className="text-muted-foreground">—</span>;
   return (
     <div className="flex items-center gap-2">
-      <code className="rounded-lg bg-zinc-100 px-2 py-1 text-xs text-zinc-700 dark:bg-zinc-950 dark:text-zinc-300">{value}</code>
+      <code className="rounded-lg bg-muted px-2 py-1 text-xs text-foreground">{value}</code>
       <CopyButton value={value} label={`Copiar ${label}`} />
     </div>
   );

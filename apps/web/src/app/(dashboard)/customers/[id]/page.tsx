@@ -4,10 +4,10 @@ import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { customersService } from '@/features/customers/customers.service';
 import { PageHeader } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
-import { ExternalIdField } from '@/components/copy-button';
+import { ExternalIdField } from '@/components/external-id-field';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/lib/auth';
@@ -19,11 +19,13 @@ export default function CustomerDetailPage() {
 
   const { data: customer, isLoading } = useQuery({
     queryKey: ['customer', id],
-    queryFn: async () => (await api.get(`/customers/${id}`)).data,
+    queryFn: async () => (await customersService.getById(id)).data as Awaited<ReturnType<typeof customersService.getById>>['data'] & {
+      payments?: { id: string; internalStatus: string; value: number }[];
+    },
   });
 
   const syncMutation = useMutation({
-    mutationFn: async () => (await api.post(`/customers/${id}/sync`)).data,
+    mutationFn: async () => (await customersService.sync(id)).data,
     onSuccess: () => {
       toast.success('Sincronização concluída');
       qc.invalidateQueries({ queryKey: ['customer', id] });

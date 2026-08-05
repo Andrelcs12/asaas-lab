@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { customersService } from '@/features/customers/customers.service';
 import { PageHeader } from '@/components/page-elements';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +12,7 @@ import { Input, Label } from '@/components/ui/input';
 export default function NewCustomerPage() {
   const router = useRouter();
   const mutation = useMutation({
-    mutationFn: async (body: Record<string, string>) => (await api.post('/customers', body)).data,
+    mutationFn: async (body: Record<string, string>) => (await customersService.create(body)).data,
     onSuccess: (data) => {
       toast.success('Cliente criado');
       router.push(`/customers/${data.id}`);

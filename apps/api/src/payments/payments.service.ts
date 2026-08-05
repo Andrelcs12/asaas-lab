@@ -1,5 +1,10 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { InternalPaymentStatus, PaymentProvider, mapAsaasPaymentToInternal } from '@asaas-lab/shared';
+import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  InternalPaymentStatus,
+  PaymentProvider,
+  mapAsaasPaymentToInternal,
+  shouldAdvancePaymentStatus,
+} from '@asaas-lab/shared';
 import { PaymentMethod, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PAYMENT_PROVIDER_TOKEN } from '../asaas/payment-provider.token';
@@ -91,6 +96,51 @@ export class PaymentsService {
     return { updated: true, payment: updated };
   }
 
+  async refund(id: string, value: number | undefined, actorId: string, correlationId?: string) {
+    const payment = await this.findOne(id);
+    if (!payment.asaasPaymentId) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Pagamento sem ID externo.' });
+    }
+    if (
+      payment.internalStatus !== InternalPaymentStatus.CONFIRMED &&
+      payment.internalStatus !== InternalPaymentStatus.RECEIVED
+    ) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Somente pagamentos confirmados ou recebidos podem ser estornados.',
+      });
+    }
+    if (value !== undefined && value > Number(payment.value)) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Valor de estorno maior que o pagamento.',
+      });
+    }
+
+    const remote = await this.provider.refundPayment(payment.asaasPaymentId, value);
+    const internalStatus = mapAsaasPaymentToInternal(remote.status);
+
+    const updated = await this.prisma.payment.update({
+      where: { id },
+      data: {
+        asaasStatus: remote.status,
+        internalStatus,
+        rawData: remote as unknown as Prisma.InputJsonValue,
+      },
+    });
+
+    await this.audit.log({
+      actorId,
+      action: 'PAYMENT_REFUND_REQUESTED',
+      entityType: 'PAYMENT',
+      entityId: id,
+      correlationId,
+      metadata: { value: value ?? Number(payment.value), asaasStatus: remote.status },
+    });
+
+    return { payment: updated, remoteStatus: remote.status };
+  }
+
   async upsertFromWebhook(params: {
     asaasPaymentId: string;
     customerId: string;
@@ -110,10 +160,15 @@ export class PaymentsService {
     };
     renewalNumber?: number;
   }) {
-    const internalStatus = mapAsaasPaymentToInternal(params.remote.status);
+    const incomingStatus = mapAsaasPaymentToInternal(params.remote.status);
     const existing = await this.prisma.payment.findUnique({
       where: { asaasPaymentId: params.asaasPaymentId },
     });
+
+    const internalStatus =
+      existing && !shouldAdvancePaymentStatus(existing.internalStatus as InternalPaymentStatus, incomingStatus)
+        ? (existing.internalStatus as InternalPaymentStatus)
+        : incomingStatus;
 
     const data = {
       customerId: params.customerId,

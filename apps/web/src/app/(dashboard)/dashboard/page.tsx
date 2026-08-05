@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, RefreshCw } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { DashboardStats } from '@asaas-lab/shared';
+import { adminService } from '@/features/admin/admin.service';
+import type { DashboardStats } from '@/features/admin/types';
 import { MetricCard, PageHeader } from '@/components/page-elements';
 import { MoneyDisplay } from '@/components/money-display';
 import { StatusBadge } from '@/components/status-badge';
@@ -19,12 +19,12 @@ export default function DashboardPage() {
   const { isAdmin } = useAuth();
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['dashboard'],
-    queryFn: async () => (await api.get<DashboardStats>('/admin/dashboard')).data,
+    queryFn: async () => (await adminService.dashboard()).data,
   });
 
   const runReconciliation = async () => {
     try {
-      await api.post('/admin/reconciliation/run');
+      await adminService.runReconciliation();
       toast.success('Reconciliação iniciada');
       refetch();
     } catch {

@@ -119,6 +119,17 @@ export class MockPaymentProvider implements PaymentProvider {
     if (sub) this.subscriptions.set(providerSubscriptionId, { ...sub, status: 'EXPIRED' });
   }
 
+  async refundPayment(providerPaymentId: string, value?: number): Promise<ProviderPayment> {
+    for (const [key, payment] of this.payments.entries()) {
+      if (payment.id === providerPaymentId) {
+        const refunded = { ...payment, status: 'REFUNDED', value: value ?? payment.value };
+        this.payments.set(key, refunded);
+        return refunded;
+      }
+    }
+    return { id: providerPaymentId, status: 'REFUNDED', value: value ?? 0 };
+  }
+
   async healthCheck(): Promise<boolean> {
     return true;
   }

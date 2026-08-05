@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { productsService } from '@/features/products/products.service';
 import { PageHeader } from '@/components/page-elements';
 import { RoleGuard } from '@/components/role-guard';
 import { Button } from '@/components/ui/button';
@@ -26,7 +26,7 @@ export default function NewProductPage() {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     try {
-      await api.post('/products', {
+      await productsService.create({
         name: form.get('name'),
         description: form.get('description'),
         type: form.get('type'),

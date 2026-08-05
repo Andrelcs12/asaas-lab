@@ -6,6 +6,9 @@ import {
   SubscriptionStatus,
   mapAsaasPaymentToInternal,
   mapAsaasSubscriptionToInternal,
+  ASAAS_CHECKOUT_EVENTS,
+  ASAAS_PAYMENT_EVENTS,
+  ASAAS_SUBSCRIPTION_EVENTS,
 } from '@asaas-lab/shared';
 import { WebhookEventStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
@@ -109,11 +112,15 @@ export class WebhooksService {
 
     try {
       const payload = event.payload as Record<string, unknown>;
-      await this.handleEvent(event.eventType, payload);
+      const outcome = await this.handleEvent(event.eventType, payload);
 
       await this.prisma.webhookEvent.update({
         where: { id: eventId },
-        data: { status: WebhookEventStatus.PROCESSED, processedAt: new Date(), lastError: null },
+        data: {
+          status: outcome === 'ignored' ? WebhookEventStatus.IGNORED : WebhookEventStatus.PROCESSED,
+          processedAt: new Date(),
+          lastError: null,
+        },
       });
     } catch (error) {
       const attempts = event.attempts + 1;
@@ -130,26 +137,42 @@ export class WebhooksService {
     }
   }
 
-  private async handleEvent(eventType: string, payload: Record<string, unknown>) {
+  private isKnownEvent(eventType: string): boolean {
+    return (
+      (ASAAS_PAYMENT_EVENTS as readonly string[]).includes(eventType) ||
+      (ASAAS_SUBSCRIPTION_EVENTS as readonly string[]).includes(eventType) ||
+      (ASAAS_CHECKOUT_EVENTS as readonly string[]).includes(eventType)
+    );
+  }
+
+  private async handleEvent(
+    eventType: string,
+    payload: Record<string, unknown>,
+  ): Promise<'handled' | 'ignored'> {
+    if (!this.isKnownEvent(eventType)) {
+      this.logger.debug(`Unknown event type: ${eventType}`);
+      return 'ignored';
+    }
+
     const payment = payload.payment as Record<string, unknown> | undefined;
     const subscription = payload.subscription as Record<string, unknown> | undefined;
 
     if (eventType.startsWith('PAYMENT_') && payment) {
       await this.handlePaymentEvent(eventType, payment);
-      return;
+      return 'handled';
     }
 
     if (eventType.startsWith('SUBSCRIPTION_') && subscription) {
       await this.handleSubscriptionEvent(eventType, subscription);
-      return;
+      return 'handled';
     }
 
     if (eventType.startsWith('CHECKOUT_')) {
       await this.checkoutsService.handleCheckoutEvent(eventType, payload);
-      return;
+      return 'handled';
     }
 
-    this.logger.debug(`Unknown event type: ${eventType}`);
+    return 'ignored';
   }
 
   private async handlePaymentEvent(_eventType: string, payment: Record<string, unknown>) {

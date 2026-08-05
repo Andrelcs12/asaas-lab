@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { api } from '@/lib/api';
+import { paymentsService } from '@/features/payments/payments.service';
 import { PageHeader, EmptyState } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { MoneyDisplay } from '@/components/money-display';
@@ -15,7 +15,7 @@ export default function PaymentsPage() {
   const { isAdmin } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['payments'],
-    queryFn: async () => (await api.get('/payments')).data,
+    queryFn: async () => (await paymentsService.list()).data,
   });
 
   return (

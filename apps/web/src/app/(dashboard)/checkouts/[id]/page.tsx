@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { checkoutsService } from '@/features/checkouts/checkouts.service';
 import { PageHeader } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { ExternalIdField } from '@/components/external-id-field';
@@ -20,12 +20,15 @@ export default function CheckoutDetailPage() {
 
   const { data: checkout, isLoading, refetch } = useQuery({
     queryKey: ['checkout', id],
-    queryFn: async () => (await api.get(`/checkouts/${id}`)).data,
+    queryFn: async () => (await checkoutsService.getById(id)).data as Awaited<ReturnType<typeof checkoutsService.getById>>['data'] & {
+      paymentOrder?: { customer?: { name: string; email: string }; product?: { name: string; price: number }; externalReference?: string };
+      subscription?: { customer?: { name: string; email: string }; product?: { name: string; price: number } };
+    },
   });
 
   const reconcile = async () => {
     try {
-      await api.post(`/checkouts/${id}/reconcile`);
+      await checkoutsService.reconcile(id);
       toast.success('Reconciliação executada');
       refetch();
     } catch {

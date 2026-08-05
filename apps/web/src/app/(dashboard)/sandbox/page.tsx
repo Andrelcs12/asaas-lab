@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { adminService } from '@/features/admin/admin.service';
 import { PageHeader } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { ExternalIdField } from '@/components/external-id-field';
@@ -14,12 +14,12 @@ import { formatDate } from '@/lib/utils';
 export default function SandboxPage() {
   const { data, refetch } = useQuery({
     queryKey: ['sandbox'],
-    queryFn: async () => (await api.get('/admin/sandbox')).data,
+    queryFn: async () => (await adminService.sandbox()).data,
   });
 
   const runReconciliation = async () => {
     try {
-      await api.post('/admin/reconciliation/run');
+      await adminService.runReconciliation();
       toast.success('Reconciliação executada');
       refetch();
     } catch {

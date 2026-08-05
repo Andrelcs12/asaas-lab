@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { adminService } from '@/features/admin/admin.service';
 import { PageHeader, EmptyState } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { formatDate } from '@/lib/utils';
 export default function WebhooksPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['webhooks'],
-    queryFn: async () => (await api.get('/admin/webhooks')).data,
+    queryFn: async () => (await adminService.listWebhooks()).data,
   });
 
   return (

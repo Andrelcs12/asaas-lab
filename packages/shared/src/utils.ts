@@ -14,6 +14,25 @@ export function buildIdempotencyKey(userId: string, customerId: string, type: st
   return `${userId}:${customerId}:${type}:${Date.now()}`;
 }
 
+const PAYMENT_STATUS_RANK: Record<InternalPaymentStatus, number> = {
+  [InternalPaymentStatus.PENDING]: 10,
+  [InternalPaymentStatus.PROCESSING]: 20,
+  [InternalPaymentStatus.OVERDUE]: 30,
+  [InternalPaymentStatus.CONFIRMED]: 40,
+  [InternalPaymentStatus.RECEIVED]: 50,
+  [InternalPaymentStatus.REFUNDED]: 60,
+  [InternalPaymentStatus.CANCELED]: 60,
+  [InternalPaymentStatus.FAILED]: 60,
+};
+
+export function shouldAdvancePaymentStatus(
+  current: InternalPaymentStatus,
+  incoming: InternalPaymentStatus,
+): boolean {
+  if (current === incoming) return false;
+  return PAYMENT_STATUS_RANK[incoming] >= PAYMENT_STATUS_RANK[current];
+}
+
 export function mapAsaasPaymentToInternal(asaasStatus: string): InternalPaymentStatus {
   const map: Record<string, InternalPaymentStatus> = {
     [AsaasPaymentStatus.PENDING]: InternalPaymentStatus.PENDING,

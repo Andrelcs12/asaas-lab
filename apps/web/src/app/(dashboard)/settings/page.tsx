@@ -2,8 +2,7 @@
 
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import type { SettingsInfo } from '@asaas-lab/shared';
+import { adminService } from '@/features/admin/admin.service';
 import { PageHeader } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -15,11 +14,11 @@ export default function SettingsPage() {
   const { isAdmin } = useAuth();
   const { data, refetch } = useQuery({
     queryKey: ['settings'],
-    queryFn: async () => (await api.get<SettingsInfo>('/admin/settings')).data,
+    queryFn: async () => (await adminService.settings()).data,
   });
 
   const reconcile = useMutation({
-    mutationFn: async () => (await api.post('/admin/reconciliation/run')).data,
+    mutationFn: async () => (await adminService.runReconciliation()).data,
     onSuccess: (result) => toast.success(`Reconciliação: ${result.divergencesFixed} corrigidas`),
   });
 

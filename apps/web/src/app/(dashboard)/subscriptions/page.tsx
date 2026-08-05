@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { subscriptionsService } from '@/features/subscriptions/subscriptions.service';
 import { PageHeader, EmptyState } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { MoneyDisplay } from '@/components/money-display';
@@ -11,7 +11,7 @@ import { Card, CardContent } from '@/components/ui/card';
 export default function SubscriptionsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['subscriptions'],
-    queryFn: async () => (await api.get('/subscriptions')).data,
+    queryFn: async () => (await subscriptionsService.list()).data,
   });
 
   return (

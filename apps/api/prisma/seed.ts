@@ -95,6 +95,20 @@ async function main() {
         isActive: true,
       },
     }),
+    prisma.product.upsert({
+      where: { id: '00000000-0000-4000-8000-000000000105' },
+      update: {},
+      create: {
+        id: '00000000-0000-4000-8000-000000000105',
+        name: 'Pagamento parcelado',
+        description:
+          'Produto inativo — Checkout hospedado Asaas não suporta parcelamento neste fluxo. Mantido apenas como referência.',
+        type: ProductType.ONE_TIME,
+        price: 120.0,
+        billingCycle: ProductBillingCycle.NONE,
+        isActive: false,
+      },
+    }),
   ]);
 
   const customers = await Promise.all([

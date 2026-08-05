@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { checkoutsService } from '@/features/checkouts/checkouts.service';
 import type { CheckoutDto } from '@asaas-lab/shared';
 import { PageHeader } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
@@ -13,7 +13,7 @@ import { formatDate } from '@/lib/utils';
 export default function CheckoutsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['checkouts'],
-    queryFn: async () => (await api.get<{ data: CheckoutDto[] }>('/checkouts')).data,
+    queryFn: async () => (await checkoutsService.list()).data,
   });
 
   return (

@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { CreditCard, QrCode, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import type { ProductDto } from '@asaas-lab/shared';
+import { customersService } from '@/features/customers/customers.service';
+import { productsService } from '@/features/products/products.service';
+import { checkoutFlowService, type CheckoutFlow } from '@/features/checkout-flow/checkout-flow.service';
+import { filterProductsByFlow } from '@/features/checkout-flow/utils';
 import { PageHeader } from '@/components/page-elements';
 import { MoneyDisplay } from '@/components/money-display';
 import { RoleGuard } from '@/components/role-guard';
@@ -15,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input, Label, Select } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 
-type Flow = 'pix' | 'credit-card' | 'subscription';
+type Flow = CheckoutFlow;
 
 export default function NewCheckoutPage() {
   const router = useRouter();
@@ -28,12 +30,12 @@ export default function NewCheckoutPage() {
 
   const { data: customers } = useQuery({
     queryKey: ['customers'],
-    queryFn: async () => (await api.get('/customers')).data,
+    queryFn: async () => (await customersService.list()).data,
   });
 
   const { data: products } = useQuery({
     queryKey: ['products'],
-    queryFn: async () => (await api.get<{ data: ProductDto[] }>('/products?isActive=true')).data,
+    queryFn: async () => (await productsService.list({ isActive: true })).data,
   });
 
   const selectedProduct = useMemo(
@@ -43,8 +45,7 @@ export default function NewCheckoutPage() {
 
   const filteredProducts = useMemo(() => {
     if (!products?.data) return [];
-    if (flow === 'subscription') return products.data.filter((p) => p.type === 'SUBSCRIPTION');
-    return products.data.filter((p) => p.type === 'ONE_TIME');
+    return filterProductsByFlow(products.data, flow);
   }, [products, flow]);
 
   if (!isAdmin) {
@@ -76,11 +77,11 @@ export default function NewCheckoutPage() {
     try {
       let response;
       if (flow === 'pix') {
-        response = await api.post('/payment-orders/pix', body);
+        response = await checkoutFlowService.createPix(body);
       } else if (flow === 'credit-card') {
-        response = await api.post('/payment-orders/credit-card', body);
+        response = await checkoutFlowService.createCreditCard(body);
       } else {
-        response = await api.post('/subscriptions/monthly', body);
+        response = await checkoutFlowService.createSubscription(body);
       }
 
       setResult(response.data);

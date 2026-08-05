@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { productsService } from '@/features/products/products.service';
 import type { ProductDto } from '@asaas-lab/shared';
 import { PageHeader } from '@/components/page-elements';
 import { MoneyDisplay } from '@/components/money-display';
@@ -25,12 +25,12 @@ export default function ProductDetailPage() {
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', id],
-    queryFn: async () => (await api.get<ProductDto>(`/products/${id}`)).data,
+    queryFn: async () => (await productsService.getById(id)).data,
   });
 
   const toggleActive = async () => {
     try {
-      await api.patch(`/products/${id}`, { isActive: !product?.isActive });
+      await productsService.update(id, { isActive: !product?.isActive });
       toast.success(product?.isActive ? 'Produto inativado' : 'Produto ativado');
       queryClient.invalidateQueries({ queryKey: ['product', id] });
     } catch {
@@ -42,7 +42,7 @@ export default function ProductDetailPage() {
     e.preventDefault();
     const form = new FormData(e.currentTarget);
     try {
-      await api.patch(`/products/${id}`, {
+      await productsService.update(id, {
         name: form.get('name'),
         description: form.get('description'),
         price: Number(form.get('price')),

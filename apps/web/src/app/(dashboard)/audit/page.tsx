@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { adminService } from '@/features/admin/admin.service';
 import { PageHeader, EmptyState } from '@/components/page-elements';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatDate } from '@/lib/utils';
@@ -9,7 +9,10 @@ import { formatDate } from '@/lib/utils';
 export default function AuditPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['audit'],
-    queryFn: async () => (await api.get('/admin/audit')).data,
+    queryFn: async () => (await adminService.audit()).data as {
+      data: Array<{ id: string; action: string; entityType: string; createdAt: string; actor?: { name: string }; correlationId?: string | null }>;
+      meta?: unknown;
+    },
   });
 
   return (
@@ -21,7 +24,7 @@ export default function AuditPage() {
         <EmptyState title="Nenhum registro" />
       ) : (
         <div className="space-y-3">
-          {data.data.map((log: { id: string; action: string; entityType: string; createdAt: string; actor?: { name: string }; correlationId?: string }) => (
+          {data.data.map((log) => (
             <Card key={log.id}>
               <CardContent className="p-5 text-sm">
                 <div className="flex justify-between">

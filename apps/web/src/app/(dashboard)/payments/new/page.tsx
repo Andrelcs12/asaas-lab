@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { customersService } from '@/features/customers/customers.service';
+import { checkoutFlowService } from '@/features/checkout-flow/checkout-flow.service';
 import { PageHeader } from '@/components/page-elements';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +14,7 @@ export default function NewPaymentPage() {
   const [type, setType] = useState<'pix' | 'credit-card' | 'subscription'>('pix');
   const { data: customers } = useQuery({
     queryKey: ['customers'],
-    queryFn: async () => (await api.get('/customers')).data,
+    queryFn: async () => (await customersService.list()).data,
   });
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -30,13 +31,14 @@ export default function NewPaymentPage() {
     };
 
     try {
+      const payload = body as unknown as Parameters<typeof checkoutFlowService.createPix>[0];
       let result;
       if (type === 'pix') {
-        result = await api.post('/payment-orders/pix', body);
+        result = await checkoutFlowService.createPix(payload);
       } else if (type === 'credit-card') {
-        result = await api.post('/payment-orders/credit-card', body);
+        result = await checkoutFlowService.createCreditCard(payload);
       } else {
-        result = await api.post('/subscriptions/monthly', body);
+        result = await checkoutFlowService.createSubscription(payload);
       }
       toast.success('Checkout criado');
       window.open(result.data.checkoutUrl, '_blank');

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { api } from '@/lib/api';
+import { checkoutsService } from '@/features/checkouts/checkouts.service';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/status-badge';
@@ -20,9 +20,12 @@ export default function CheckoutCallbackPage({ variant }: { variant: 'success' |
 
     const poll = async () => {
       try {
-        const order = await api.get(`/payment-orders?limit=100`);
-        const found = order.data.data.find((o: { externalReference: string }) => o.externalReference === ref);
-        if (found?.status === 'CONFIRMED') {
+        const response = await checkoutsService.list(1, 100);
+        type CheckoutWithOrder = { paymentOrder?: { externalReference?: string; status?: string } };
+        const found = (response.data.data as CheckoutWithOrder[]).find(
+          (c) => c.paymentOrder?.externalReference === ref,
+        );
+        if (found?.paymentOrder?.status === 'CONFIRMED') {
           setStatus('CONFIRMED');
           return;
         }

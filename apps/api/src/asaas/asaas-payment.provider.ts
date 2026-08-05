@@ -194,6 +194,16 @@ export class AsaasPaymentProvider implements PaymentProvider {
     await this.http.request('DELETE', `/subscriptions/${providerSubscriptionId}`);
   }
 
+  async refundPayment(providerPaymentId: string, value?: number): Promise<ProviderPayment> {
+    const body = value !== undefined ? { value } : {};
+    const data = await this.http.request<AsaasPaymentResponse>(
+      'POST',
+      `/payments/${providerPaymentId}/refund`,
+      body,
+    );
+    return this.mapPayment(data);
+  }
+
   async healthCheck(): Promise<boolean> {
     if (!this.config.asaasApiKey) return false;
     try {

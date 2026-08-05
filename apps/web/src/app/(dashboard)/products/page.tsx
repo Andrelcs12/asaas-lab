@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { api } from '@/lib/api';
+import { productsService } from '@/features/products/products.service';
 import type { ProductDto } from '@asaas-lab/shared';
 import { PageHeader } from '@/components/page-elements';
 import { MoneyDisplay } from '@/components/money-display';
@@ -16,7 +16,7 @@ import { Card, CardContent } from '@/components/ui/card';
 export default function ProductsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['products'],
-    queryFn: async () => (await api.get<{ data: ProductDto[] }>('/products')).data,
+    queryFn: async () => (await productsService.list()).data,
   });
 
   return (

@@ -1,10 +1,11 @@
-import { Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CorrelationId, CurrentUser, Roles } from '../common/decorators';
+import { RefundPaymentDto } from './dto/refund-payment.dto';
 
 @ApiTags('payments')
 @ApiBearerAuth()
@@ -44,5 +45,16 @@ export class PaymentsController {
     @CorrelationId() correlationId: string,
   ) {
     return this.paymentsService.reconcile(id, userId, correlationId);
+  }
+
+  @Post(':id/refund')
+  @Roles(UserRole.ADMIN)
+  refund(
+    @Param('id') id: string,
+    @Body() dto: RefundPaymentDto,
+    @CurrentUser('id') userId: string,
+    @CorrelationId() correlationId: string,
+  ) {
+    return this.paymentsService.refund(id, dto.value, userId, correlationId);
   }
 }

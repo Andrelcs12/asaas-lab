@@ -11,7 +11,28 @@ import {
   mapAsaasPaymentToInternal,
   mapAsaasSubscriptionToInternal,
   sanitizeForLog,
+  shouldAdvancePaymentStatus,
 } from './utils';
+
+describe('shouldAdvancePaymentStatus', () => {
+  it('does not regress from RECEIVED to PENDING', () => {
+    expect(
+      shouldAdvancePaymentStatus(InternalPaymentStatus.RECEIVED, InternalPaymentStatus.PENDING),
+    ).toBe(false);
+  });
+
+  it('advances from CONFIRMED to RECEIVED', () => {
+    expect(
+      shouldAdvancePaymentStatus(InternalPaymentStatus.CONFIRMED, InternalPaymentStatus.RECEIVED),
+    ).toBe(true);
+  });
+
+  it('allows REFUNDED after RECEIVED', () => {
+    expect(
+      shouldAdvancePaymentStatus(InternalPaymentStatus.RECEIVED, InternalPaymentStatus.REFUNDED),
+    ).toBe(true);
+  });
+});
 
 describe('buildExternalReference', () => {
   it('builds prefixed reference', () => {

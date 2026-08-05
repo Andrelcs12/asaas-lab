@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { subscriptionsService } from '@/features/subscriptions/subscriptions.service';
 import { PageHeader } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { MoneyDisplay } from '@/components/money-display';
@@ -22,27 +22,30 @@ export default function SubscriptionDetailPage() {
 
   const { data: sub, isLoading } = useQuery({
     queryKey: ['subscription', id],
-    queryFn: async () => (await api.get(`/subscriptions/${id}`)).data,
+    queryFn: async () => (await subscriptionsService.getById(id)).data as Awaited<ReturnType<typeof subscriptionsService.getById>>['data'] & {
+      customer?: { name: string };
+    },
   });
 
   const pause = useMutation({
-    mutationFn: async () => (await api.post(`/subscriptions/${id}/pause`)).data,
+    mutationFn: async () => (await subscriptionsService.pause(id)).data,
     onSuccess: () => { toast.success('Assinatura pausada'); qc.invalidateQueries({ queryKey: ['subscription', id] }); },
   });
   const resume = useMutation({
-    mutationFn: async () => (await api.post(`/subscriptions/${id}/resume`)).data,
+    mutationFn: async () => (await subscriptionsService.resume(id)).data,
     onSuccess: () => { toast.success('Assinatura reativada'); qc.invalidateQueries({ queryKey: ['subscription', id] }); },
   });
   const cancel = useMutation({
-    mutationFn: async () => (await api.post(`/subscriptions/${id}/cancel`, { reason: cancelReason })).data,
+    mutationFn: async () => (await subscriptionsService.cancel(id, cancelReason)).data,
     onSuccess: () => { toast.success('Assinatura cancelada'); qc.invalidateQueries({ queryKey: ['subscription', id] }); },
   });
   const reconcile = useMutation({
-    mutationFn: async () => (await api.post(`/subscriptions/${id}/reconcile`)).data,
+    mutationFn: async () => (await subscriptionsService.reconcile(id)).data,
     onSuccess: () => { toast.success('Reconciliação concluída'); qc.invalidateQueries({ queryKey: ['subscription', id] }); },
   });
 
   if (isLoading) return <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>;
+  if (!sub) return <p className="text-zinc-500 dark:text-zinc-400">Assinatura não encontrada.</p>;
 
   return (
     <div>

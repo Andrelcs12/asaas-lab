@@ -3,7 +3,7 @@
 import { useParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { adminService } from '@/features/admin/admin.service';
 import { PageHeader } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -18,11 +18,13 @@ export default function WebhookDetailPage() {
 
   const { data: event, isLoading } = useQuery({
     queryKey: ['webhook', id],
-    queryFn: async () => (await api.get(`/admin/webhooks/${id}`)).data,
+    queryFn: async () => (await adminService.getWebhook(id)).data as Awaited<ReturnType<typeof adminService.getWebhook>>['data'] & {
+      payload?: unknown;
+    },
   });
 
   const reprocess = useMutation({
-    mutationFn: async () => (await api.post(`/admin/webhooks/${id}/reprocess`)).data,
+    mutationFn: async () => (await adminService.reprocessWebhook(id)).data,
     onSuccess: () => {
       toast.success('Reprocessamento iniciado');
       qc.invalidateQueries({ queryKey: ['webhook', id] });
@@ -30,6 +32,7 @@ export default function WebhookDetailPage() {
   });
 
   if (isLoading) return <p className="text-zinc-500 dark:text-zinc-400">Carregando...</p>;
+  if (!event) return <p className="text-zinc-500 dark:text-zinc-400">Evento não encontrado.</p>;
 
   return (
     <div>

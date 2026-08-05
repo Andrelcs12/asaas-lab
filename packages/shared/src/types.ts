@@ -289,5 +289,6 @@ export interface PaymentProvider {
   pauseSubscription(providerSubscriptionId: string): Promise<void>;
   resumeSubscription(providerSubscriptionId: string): Promise<void>;
   cancelSubscription(providerSubscriptionId: string): Promise<void>;
+  refundPayment(providerPaymentId: string, value?: number): Promise<ProviderPayment>;
   healthCheck(): Promise<boolean>;
 }

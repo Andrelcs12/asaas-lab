@@ -1,21 +1,11 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
-import { IsNumber, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
 import { PaymentOrdersService } from './payment-orders.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CorrelationId, CurrentUser, Roles } from '../common/decorators';
-
-class CreatePaymentOrderDto {
-  @IsUUID() customerId!: string;
-  @IsOptional() @IsUUID() productId?: string;
-  @IsOptional() @IsString() @MinLength(3) description?: string;
-  @IsOptional() @IsNumber() @Min(0.01) amount?: number;
-  @IsString() dueDate!: string;
-  @IsOptional() @IsString() internalNote?: string;
-  @IsOptional() @IsString() idempotencyKey?: string;
-}
+import { CreatePaymentOrderDto } from './dto/create-payment-order.dto';
 
 @ApiTags('payment-orders')
 @ApiBearerAuth()

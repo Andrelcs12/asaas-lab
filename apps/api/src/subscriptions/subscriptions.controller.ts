@@ -1,26 +1,12 @@
 import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
-import { IsNumber, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
 import { SubscriptionsService } from './subscriptions.service';
 import { ReconciliationService } from '../reconciliation/reconciliation.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
 import { CorrelationId, CurrentUser, Roles } from '../common/decorators';
-
-class CreateSubscriptionDto {
-  @IsUUID() customerId!: string;
-  @IsOptional() @IsUUID() productId?: string;
-  @IsOptional() @IsString() @MinLength(3) description?: string;
-  @IsOptional() @IsNumber() @Min(0.01) amount?: number;
-  @IsString() startDate!: string;
-  @IsOptional() @IsString() internalNote?: string;
-  @IsOptional() @IsString() idempotencyKey?: string;
-}
-
-class CancelSubscriptionDto {
-  @IsString() @MinLength(3) reason!: string;
-}
+import { CancelSubscriptionDto, CreateSubscriptionDto } from './dto/create-subscription.dto';
 
 @ApiTags('subscriptions')
 @ApiBearerAuth()

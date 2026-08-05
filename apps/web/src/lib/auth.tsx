@@ -1,7 +1,8 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import type { AuthUser, LoginResponse } from '@asaas-lab/shared';
+import type { AuthUser, LoginResponse } from '@/features/auth/types';
+import { authService } from '@/features/auth/auth.service';
 import { api } from './api';
 
 interface AuthContextValue {
@@ -32,7 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const { data } = await api.post<LoginResponse>('/auth/login', { email, password });
+    const { data } = await authService.login(email, password);
     localStorage.setItem('accessToken', data.accessToken);
     setUser(data.user);
   };

@@ -10,27 +10,11 @@ import {
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 import { CustomersService } from './customers.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../common/guards/roles.guard';
-import { CorrelationId, CurrentUser, IpAddress, Roles } from '../common/decorators';
-
-class CreateCustomerDto {
-  @IsString() @MinLength(2) name!: string;
-  @IsEmail() email!: string;
-  @IsString() @MinLength(11) cpfCnpj!: string;
-  @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() address?: string;
-}
-
-class UpdateCustomerDto {
-  @IsOptional() @IsString() name?: string;
-  @IsOptional() @IsEmail() email?: string;
-  @IsOptional() @IsString() cpfCnpj?: string;
-  @IsOptional() @IsString() phone?: string;
-  @IsOptional() @IsString() address?: string;
-}
+import { CorrelationId, CurrentUser, Roles } from '../common/decorators';
+import { CreateCustomerDto, UpdateCustomerDto } from './dto/create-customer.dto';
 
 @ApiTags('customers')
 @ApiBearerAuth()

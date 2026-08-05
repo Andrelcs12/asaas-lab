@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { CustomerDto, PaginatedResponse } from '@asaas-lab/shared';
+import { customersService } from '@/features/customers/customers.service';
+import type { CustomerDto, PaginatedResponse } from '@/features/customers/types';
 import { PageHeader, EmptyState } from '@/components/page-elements';
 import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ export default function CustomersPage() {
   const { isAdmin } = useAuth();
   const { data, isLoading } = useQuery({
     queryKey: ['customers'],
-    queryFn: async () => (await api.get<PaginatedResponse<CustomerDto>>('/customers')).data,
+    queryFn: async () => (await customersService.list()).data,
   });
 
   return (

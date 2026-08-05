@@ -11,6 +11,21 @@ import { PasswordInput } from '@/components/password-input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ThemeToggle } from '@/components/theme-toggle';
 
+const TEST_ACCOUNTS = [
+  {
+    role: 'Admin',
+    description: 'Acesso completo (criar, editar, estornar)',
+    email: 'admin@lab.local',
+    password: 'Lab@123456',
+  },
+  {
+    role: 'Cliente',
+    description: 'Somente leitura (VIEWER)',
+    email: 'viewer@lab.local',
+    password: 'Lab@123456',
+  },
+] as const;
+
 export default function LoginPage() {
   const { login, user, loading } = useAuth();
   const router = useRouter();
@@ -76,9 +91,40 @@ export default function LoginPage() {
               {submitting ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            Seed local: admin@lab.local / Lab@123456
-          </p>
+
+          <div className="mt-6 space-y-3">
+            <p className="text-center text-xs font-medium text-muted-foreground">
+              Contas de teste — clique para preencher
+            </p>
+            {TEST_ACCOUNTS.map((account) => (
+              <button
+                key={account.email}
+                type="button"
+                onClick={() => {
+                  setEmail(account.email);
+                  setPassword(account.password);
+                }}
+                className="w-full rounded-xl border border-border bg-muted/30 p-3 text-left transition-colors hover:bg-muted/60"
+              >
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <span className="text-sm font-medium">{account.role}</span>
+                  <span className="text-[11px] text-muted-foreground">{account.description}</span>
+                </div>
+                <table className="w-full text-xs">
+                  <tbody>
+                    <tr>
+                      <td className="w-16 py-0.5 text-muted-foreground">E-mail</td>
+                      <td className="py-0.5 font-mono">{account.email}</td>
+                    </tr>
+                    <tr>
+                      <td className="py-0.5 text-muted-foreground">Senha</td>
+                      <td className="py-0.5 font-mono">{account.password}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </button>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

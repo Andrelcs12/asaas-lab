@@ -1,0 +1,26 @@
+{
+  "name": "asaas-payment-lab",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:web": "npm run dev -w web",
+    "dev:api": "npm run dev -w api",
+    "build": "npm run build -w @asaas-lab/shared && npm run build -w api && npm run build -w web",
+    "lint": "npm run lint -w @asaas-lab/shared && npm run lint -w api && npm run lint -w web",
+    "typecheck": "npm run typecheck -w @asaas-lab/shared && npm run typecheck -w api && npm run typecheck -w web",
+    "test": "npm run test -w @asaas-lab/shared && npm run test -w api",
+    "test:e2e": "npm run test:e2e -w api",
+    "prisma:generate": "npm run prisma:generate -w api",
+    "prisma:migrate": "npm run prisma:migrate -w api",
+    "prisma:seed": "npm run prisma:seed -w api",
+    "prisma:studio": "npm run prisma:studio -w api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.0"
+  }
+}

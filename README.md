@@ -44,7 +44,7 @@ npm run prisma:generate
 npm run prisma:migrate
 npm run prisma:seed
 
-# 5. Desenvolvimento (API :3333 + Web :3000)
+# 5. Desenvolvimento (API :4000 + Web :3000)
 npm run dev
 ```
 

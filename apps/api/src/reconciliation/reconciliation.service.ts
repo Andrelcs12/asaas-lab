@@ -1,13 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { InternalPaymentStatus, SubscriptionStatus } from '@asaas-lab/shared';
+import { InternalPaymentStatus, SubscriptionStatus, mapAsaasSubscriptionToInternal } from '@asaas-lab/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { AuditService } from '../audit/audit.service';
 import { Inject } from '@nestjs/common';
 import { PaymentProvider } from '@asaas-lab/shared';
 import { PAYMENT_PROVIDER_TOKEN } from '../asaas/payment-provider.token';
-import { mapAsaasSubscriptionToInternal } from '@asaas-lab/shared';
+import { AppConfigService } from '../common/config/app-config.service';
 
 @Injectable()
 export class ReconciliationService {
@@ -18,13 +18,23 @@ export class ReconciliationService {
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
     private readonly audit: AuditService,
+    private readonly config: AppConfigService,
     @Inject(PAYMENT_PROVIDER_TOKEN) private readonly provider: PaymentProvider,
   ) {}
 
   @Cron(CronExpression.EVERY_10_MINUTES)
   async autoReconcile() {
+    if (!this.config.hasDatabase || !this.config.asaasApiKey) return;
     if (this.running) return;
-    await this.run('SYSTEM');
+
+    try {
+      await this.run('SYSTEM');
+    } catch (error) {
+      this.logger.error(
+        'Reconciliação automática falhou.',
+        error instanceof Error ? error.message : error,
+      );
+    }
   }
 
   async run(actorId = 'SYSTEM', correlationId?: string) {

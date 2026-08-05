@@ -77,7 +77,8 @@ Documentação: [docs.asaas.com](https://docs.asaas.com)
 | Conceito | Descrição |
 |----------|-----------|
 | **Customer** | Cliente local sincronizado com `/v3/customers` |
-| **Payment Order** | Intenção interna antes do Checkout |
+| **Product** | Catálogo de produtos para simulação (ONE_TIME / SUBSCRIPTION) |
+| **Checkout** | Entidade local vinculada ao Checkout hospedado do Asaas |
 | **Payment** | Cobrança confirmada (via webhook/reconciliação) |
 | **Subscription** | Recorrência mensal controlada pelo Asaas |
 | **Checkout** | Página hospedada — `POST /v3/checkouts` |
@@ -104,9 +105,11 @@ Documentação: [docs.asaas.com](https://docs.asaas.com)
 | GET | `/admin/dashboard` | Métricas |
 | POST | `/customers` | Criar cliente |
 | POST | `/customers/:id/sync` | Sincronizar com Asaas |
-| POST | `/payment-orders/pix` | Checkout PIX |
+| POST | `/payment-orders/pix` | Checkout PIX (com productId) |
 | POST | `/payment-orders/credit-card` | Checkout cartão |
 | POST | `/subscriptions/monthly` | Assinatura mensal |
+| GET | `/products` | Listar produtos |
+| GET | `/checkouts` | Listar checkouts |
 | POST | `/webhooks/asaas` | Receber webhooks |
 | POST | `/admin/reconciliation/run` | Reconciliação manual |
 | GET | `/docs` | Swagger OpenAPI |
@@ -138,20 +141,14 @@ npm run prisma:studio
 - Integração externa real depende de API Key configurada manualmente
 - Callback de Checkout não confirma pagamento — aguardar webhook
 
-## Páginas do frontend
+## Páginas do frontend (legado — ver seção atualizada acima)
 
-- `/login`, `/dashboard`
-- `/customers`, `/customers/new`, `/customers/[id]`
-- `/payments`, `/payments/new`, `/payments/[id]`
-- `/subscriptions`, `/subscriptions/[id]`
-- `/webhooks`, `/webhooks/[id]`
-- `/audit`, `/settings`, `/sandbox` (dev)
-- `/checkout/success|pending|canceled|error`
+- `/payments/new` redireciona conceitualmente para `/checkout/new`
 
 ## Deploy do backend na Vercel
 
 > **Root Directory na Vercel:** `apps/api`  
-> **Framework detectado:** NestJS (zero config — [documentação oficial](https://vercel.com/docs/frameworks/backend/nestjs))  
+> **Framework:** NestJS (via `apps/api/vercel.json`)  
 > **Sem prefixo global** — rotas públicas: `GET /health` e `POST /webhooks/asaas`
 
 ### Passo a passo
@@ -159,8 +156,13 @@ npm run prisma:studio
 1. Faça push do repositório para o GitHub.
 2. Abra [vercel.com/new](https://vercel.com/new) e importe o repositório.
 3. Em **Root Directory**, selecione `apps/api`.
-4. Confirme que o framework **NestJS** foi detectado automaticamente.
-5. Adicione as variáveis de ambiente:
+4. Em **Project Settings → General**, ative **Include source files outside of the Root Directory in the Build Step** (obrigatório para o monorepo `@asaas-lab/shared`).
+5. Em **Build & Development Settings**, confirme:
+   - **Framework Preset:** NestJS (ou deixe o `vercel.json` sobrescrever)
+   - **Output Directory:** vazio / padrão — **não** use `public`
+   - **Install Command** e **Build Command:** deixe o `apps/api/vercel.json` controlar
+6. Confirme que o framework **NestJS** foi detectado (não "Other").
+7. Adicione as variáveis de ambiente:
 
 ```env
 NODE_ENV=production
@@ -170,7 +172,7 @@ ASAAS_API_KEY=valor_sandbox
 ASAAS_WEBHOOK_AUTH_TOKEN=token_gerado_no_painel
 ```
 
-6. Para uso completo (auth, dashboard, Prisma), adicione também:
+8. Para uso completo (auth, dashboard, Prisma), adicione também:
 
 ```env
 DATABASE_URL=postgresql://...
@@ -178,22 +180,26 @@ JWT_SECRET=valor-seguro-aleatorio
 WEB_URL=https://seu-frontend.vercel.app
 ```
 
-7. Faça o primeiro deploy.
-8. Copie o **domínio estável de produção** (ex.: `https://nome-do-projeto.vercel.app`).
-9. Teste o health check:
+9. Faça o primeiro deploy.
+10. Copie o **domínio estável de produção** (ex.: `https://nome-do-projeto.vercel.app`).
+11. Teste o health check:
 
 ```bash
 curl https://nome-do-projeto.vercel.app/health
 ```
 
-10. Defina a URL do webhook:
+12. Defina a URL do webhook:
 
 ```env
 ASAAS_WEBHOOK_URL=https://nome-do-projeto.vercel.app/webhooks/asaas
 ```
 
-11. Adicione `ASAAS_WEBHOOK_URL` nas variáveis da Vercel e faça redeploy se necessário.
-12. Cadastre a mesma URL no painel Sandbox do Asaas.
+13. Adicione `ASAAS_WEBHOOK_URL` nas variáveis da Vercel e faça redeploy se necessário.
+14. Cadastre a mesma URL no painel Sandbox do Asaas.
+
+### Erro "No Output Directory named public"
+
+Esse erro ocorre quando a Vercel trata a API como site estático (Framework = Other + Output Directory = `public`). O arquivo `apps/api/vercel.json` corrige isso forçando `"framework": "nestjs"`. Se persistir, limpe manualmente o **Output Directory** nas configurações do projeto na Vercel.
 
 > Use o domínio **Production**, não URLs temporárias de Preview Deployment.
 
@@ -254,18 +260,39 @@ curl -i -X POST https://nome-do-projeto.vercel.app/webhooks/asaas \
   }'
 ```
 
-Resposta esperada: `HTTP/2 200` com `{ "received": true, "eventId": "evt_test_002" }`.
+Resposta esperada: `HTTP/2 200` com `{ "received": true, "duplicate": false }`.
 
-## Evoluindo o lab
+## Produtos seed
 
-Sugestões para próximos passos:
+| Produto | Tipo | Valor |
+|---------|------|-------|
+| Pagamento PIX de teste | ONE_TIME | R$ 15,00 |
+| Pagamento com cartão | ONE_TIME | R$ 25,00 |
+| Plano mensal básico | SUBSCRIPTION | R$ 39,90 |
+| Plano mensal profissional | SUBSCRIPTION | R$ 79,90 |
 
-1. Configurar ngrok e validar webhooks reais
-2. Testar fluxo PIX completo no Sandbox
-3. Observar eventos `PAYMENT_CONFIRMED` → `PAYMENT_RECEIVED`
-4. Criar assinatura e acompanhar renovações como pagamentos separados
-5. Explorar reconciliação manual quando webhook falhar
-6. Ler logs de auditoria após cada operação financeira
+## Páginas do frontend
+
+- `/login`, `/dashboard`
+- `/customers`, `/customers/new`, `/customers/[id]`
+- `/products`, `/products/new`, `/products/[id]`
+- `/checkout/new` — criar Checkout (PIX, cartão, assinatura)
+- `/checkouts`, `/checkouts/[id]`
+- `/payments`, `/payments/[id]`
+- `/subscriptions`, `/subscriptions/[id]`
+- `/webhooks`, `/webhooks/[id]`
+- `/audit`, `/settings`, `/sandbox` (dev + ADMIN)
+- `/checkout/success|pending|canceled|error`
+
+## Endpoints adicionais
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| GET/POST/PATCH | `/products` | CRUD de produtos |
+| GET | `/checkouts` | Listar checkouts |
+| GET | `/checkouts/:id` | Detalhe do checkout |
+| POST | `/checkouts/:id/reconcile` | Reconciliar checkout |
+| GET | `/admin/sandbox` | Ferramentas sandbox (ADMIN) |
 
 ---
 

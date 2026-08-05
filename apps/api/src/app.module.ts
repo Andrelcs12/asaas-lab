@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
+import { CorrelationIdMiddleware } from './common/middleware/correlation-id.middleware';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
@@ -13,6 +14,8 @@ import { ReconciliationModule } from './reconciliation/reconciliation.module';
 import { AsaasModule } from './asaas/asaas.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthModule } from './health/health.module';
+import { ProductsModule } from './products/products.module';
+import { CheckoutsModule } from './checkouts/checkouts.module';
 import { AppConfigModule } from './common/config/app-config.module';
 import { validateEnv } from './common/config/env.validation';
 
@@ -37,6 +40,12 @@ import { validateEnv } from './common/config/env.validation';
     ReconciliationModule,
     AdminModule,
     HealthModule,
+    ProductsModule,
+    CheckoutsModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CorrelationIdMiddleware).forRoutes('*');
+  }
+}

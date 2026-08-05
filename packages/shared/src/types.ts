@@ -140,16 +140,48 @@ export interface AuditLogDto {
 
 export interface DashboardStats {
   customersCount: number;
+  productsCount: number;
+  checkoutsCount: number;
   pendingPayments: number;
   confirmedPayments: number;
   overduePayments: number;
   activeSubscriptions: number;
   pausedSubscriptions: number;
   canceledSubscriptions: number;
+  pendingWebhooks: number;
   failedWebhooks: number;
+  renewals: number;
   confirmedValue: number;
   pendingValue: number;
   recentEvents: WebhookEventDto[];
+  recentPayments: PaymentDto[];
+  recentSubscriptions: SubscriptionDto[];
+}
+
+export interface ProductDto {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  price: number;
+  billingCycle: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CheckoutDto {
+  id: string;
+  paymentOrderId: string | null;
+  subscriptionId: string | null;
+  asaasCheckoutId: string | null;
+  checkoutUrl: string | null;
+  type: string;
+  status: string;
+  expiresAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SettingsInfo {

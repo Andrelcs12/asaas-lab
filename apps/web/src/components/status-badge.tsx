@@ -26,6 +26,12 @@ const statusConfig: Record<string, { label: string; icon: React.ElementType; cla
   PAUSED: { label: 'Pausada', icon: PauseCircle, className: 'bg-amber-950 text-amber-300 border-amber-800' },
   PROCESSED: { label: 'Processado', icon: CheckCircle2, className: 'bg-emerald-950 text-emerald-300 border-emerald-800' },
   IGNORED: { label: 'Ignorado', icon: Ban, className: 'bg-zinc-800 text-zinc-400' },
+  CREATED: { label: 'Criado', icon: CheckCircle2, className: 'bg-blue-950 text-blue-300 border-blue-800' },
+  OPENED: { label: 'Aberto', icon: Loader2, className: 'bg-blue-950 text-blue-300 border-blue-800' },
+  CREATING: { label: 'Criando', icon: Loader2, className: 'bg-zinc-800 text-zinc-300' },
+  COMPLETED: { label: 'Concluído', icon: CheckCircle2, className: 'bg-emerald-950 text-emerald-300 border-emerald-800' },
+  ONE_TIME: { label: 'Avulso', icon: Clock, className: 'bg-zinc-800 text-zinc-300' },
+  SUBSCRIPTION: { label: 'Assinatura', icon: RefreshCw, className: 'bg-purple-950 text-purple-300 border-purple-800' },
   SYNCED: { label: 'Sincronizado', icon: CheckCircle2, className: 'bg-emerald-950 text-emerald-300 border-emerald-800' },
 };
 

@@ -4,9 +4,11 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { CustomersModule } from '../customers/customers.module';
 import { AsaasModule } from '../asaas/asaas.module';
 import { ReconciliationModule } from '../reconciliation/reconciliation.module';
+import { ProductsModule } from '../products/products.module';
+import { CheckoutsModule } from '../checkouts/checkouts.module';
 
 @Module({
-  imports: [CustomersModule, AsaasModule, ReconciliationModule],
+  imports: [CustomersModule, AsaasModule, ReconciliationModule, ProductsModule, CheckoutsModule],
   controllers: [SubscriptionsController],
   providers: [SubscriptionsService],
   exports: [SubscriptionsService],

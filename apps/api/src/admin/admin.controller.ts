@@ -32,34 +32,60 @@ export class AdminController {
   async dashboard() {
     const [
       customersCount,
+      productsCount,
+      checkoutsCount,
       payments,
       activeSubscriptions,
       pausedSubscriptions,
       canceledSubscriptions,
+      pendingWebhooks,
       failedWebhooks,
       recentEvents,
+      recentPayments,
+      recentSubscriptions,
     ] = await Promise.all([
       this.prisma.customer.count(),
-      this.prisma.payment.findMany({ select: { internalStatus: true, value: true } }),
+      this.prisma.product.count(),
+      this.prisma.checkout.count(),
+      this.prisma.payment.findMany({ select: { internalStatus: true, value: true, subscriptionId: true } }),
       this.prisma.subscription.count({ where: { status: SubscriptionStatus.ACTIVE } }),
       this.prisma.subscription.count({ where: { status: SubscriptionStatus.PAUSED } }),
       this.prisma.subscription.count({ where: { status: SubscriptionStatus.CANCELED } }),
+      this.prisma.webhookEvent.count({ where: { status: WebhookEventStatus.PENDING } }),
       this.prisma.webhookEvent.count({ where: { status: WebhookEventStatus.FAILED } }),
       this.prisma.webhookEvent.findMany({ take: 5, orderBy: { receivedAt: 'desc' } }),
+      this.prisma.payment.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { customer: { select: { name: true } } },
+      }),
+      this.prisma.subscription.findMany({
+        take: 5,
+        orderBy: { createdAt: 'desc' },
+        include: { customer: { select: { name: true } }, product: { select: { name: true } } },
+      }),
     ]);
 
     const totals = calculateDashboardTotals(
       payments.map((p) => ({ internalStatus: p.internalStatus as never, value: Number(p.value) })),
     );
 
+    const renewals = payments.filter((p) => p.subscriptionId).length;
+
     return {
       customersCount,
+      productsCount,
+      checkoutsCount,
       ...totals,
       activeSubscriptions,
       pausedSubscriptions,
       canceledSubscriptions,
+      pendingWebhooks,
       failedWebhooks,
+      renewals,
       recentEvents,
+      recentPayments,
+      recentSubscriptions,
     };
   }
 
@@ -110,9 +136,42 @@ export class AdminController {
       environment: this.config.asaasEnvironment,
       asaasBaseUrl: this.config.asaasBaseUrl,
       webhookConfigured: Boolean(this.config.asaasWebhookAuthToken),
+      webhookUrl: this.config.asaasWebhookUrl,
       provider: this.config.paymentProvider,
       connectionStatus: connected ? 'connected' : 'disconnected',
       lastCheckedAt: new Date().toISOString(),
+    };
+  }
+
+  @Get('sandbox')
+  @Roles(UserRole.ADMIN)
+  async sandbox() {
+    const [lastCheckouts, lastPayments, lastSubscriptions, lastWebhooks, lastCustomers] =
+      await Promise.all([
+        this.prisma.checkout.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
+        this.prisma.payment.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
+        this.prisma.subscription.findMany({ take: 5, orderBy: { createdAt: 'desc' } }),
+        this.prisma.webhookEvent.findMany({ take: 5, orderBy: { receivedAt: 'desc' } }),
+        this.prisma.customer.findMany({
+          take: 5,
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, name: true, asaasCustomerId: true },
+        }),
+      ]);
+
+    const connected = await this.provider.healthCheck();
+
+    return {
+      environment: this.config.asaasEnvironment,
+      asaasBaseUrl: this.config.asaasBaseUrl,
+      webhookConfigured: Boolean(this.config.asaasWebhookAuthToken),
+      webhookUrl: this.config.asaasWebhookUrl,
+      connectionStatus: connected ? 'connected' : 'disconnected',
+      lastCheckouts,
+      lastPayments,
+      lastSubscriptions,
+      lastWebhooks,
+      lastCustomers,
     };
   }
 }

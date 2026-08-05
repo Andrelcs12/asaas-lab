@@ -63,6 +63,33 @@ export enum WebhookEventStatus {
   IGNORED = 'IGNORED',
 }
 
+export enum ProductType {
+  ONE_TIME = 'ONE_TIME',
+  SUBSCRIPTION = 'SUBSCRIPTION',
+}
+
+export enum ProductBillingCycle {
+  NONE = 'NONE',
+  MONTHLY = 'MONTHLY',
+}
+
+export enum CheckoutType {
+  PIX_ONE_TIME = 'PIX_ONE_TIME',
+  CREDIT_CARD_ONE_TIME = 'CREDIT_CARD_ONE_TIME',
+  CREDIT_CARD_SUBSCRIPTION = 'CREDIT_CARD_SUBSCRIPTION',
+}
+
+export enum CheckoutStatus {
+  CREATING = 'CREATING',
+  CREATED = 'CREATED',
+  OPENED = 'OPENED',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  EXPIRED = 'EXPIRED',
+  CANCELED = 'CANCELED',
+  FAILED = 'FAILED',
+}
+
 export enum AuditEntityType {
   USER = 'USER',
   CUSTOMER = 'CUSTOMER',

@@ -10,8 +10,9 @@ import { CorrelationId, CurrentUser, Roles } from '../common/decorators';
 
 class CreateSubscriptionDto {
   @IsUUID() customerId!: string;
-  @IsString() @MinLength(3) description!: string;
-  @IsNumber() @Min(0.01) amount!: number;
+  @IsOptional() @IsUUID() productId?: string;
+  @IsOptional() @IsString() @MinLength(3) description?: string;
+  @IsOptional() @IsNumber() @Min(0.01) amount?: number;
   @IsString() startDate!: string;
   @IsOptional() @IsString() internalNote?: string;
   @IsOptional() @IsString() idempotencyKey?: string;

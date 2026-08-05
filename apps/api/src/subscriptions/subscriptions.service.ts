@@ -9,17 +9,30 @@ import {
   PaymentOrderStatus,
   PaymentOrderType,
   PaymentProvider,
+  ProductType,
   SubscriptionStatus,
   buildExternalReference,
   mapAsaasSubscriptionToInternal,
 } from '@asaas-lab/shared';
-import { Prisma } from '@prisma/client';
+import { CheckoutStatus, CheckoutType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PAYMENT_PROVIDER_TOKEN } from '../asaas/payment-provider.token';
 import { CustomersService } from '../customers/customers.service';
+import { ProductsService } from '../products/products.service';
+import { CheckoutsService } from '../checkouts/checkouts.service';
 import { AuditService } from '../audit/audit.service';
 import { AppConfigService } from '../common/config/app-config.service';
 import { ERROR_CODES } from '../common/constants/error-codes';
+
+interface CreateSubscriptionInput {
+  customerId: string;
+  productId?: string;
+  description?: string;
+  amount?: number;
+  startDate: string;
+  internalNote?: string;
+  idempotencyKey?: string;
+}
 
 @Injectable()
 export class SubscriptionsService {
@@ -27,57 +40,93 @@ export class SubscriptionsService {
     private readonly prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER_TOKEN) private readonly provider: PaymentProvider,
     private readonly customersService: CustomersService,
+    private readonly productsService: ProductsService,
+    private readonly checkoutsService: CheckoutsService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
   ) {}
 
-  async createMonthly(
-    input: {
-      customerId: string;
-      description: string;
-      amount: number;
-      startDate: string;
-      internalNote?: string;
-      idempotencyKey?: string;
-    },
-    userId: string,
-    correlationId?: string,
-  ) {
+  private async resolveProduct(input: CreateSubscriptionInput) {
+    if (!input.productId) {
+      if (!input.description || !input.amount) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: 'Informe productId ou description + amount.',
+        });
+      }
+      return { description: input.description, amount: input.amount, productId: undefined };
+    }
+
+    const product = await this.productsService.findOne(input.productId);
+    if (!product.isActive) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Produto inativo.' });
+    }
+    if (product.type !== ProductType.SUBSCRIPTION) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Produto não é do tipo SUBSCRIPTION.',
+      });
+    }
+    return {
+      description: product.description,
+      amount: Number(product.price),
+      productId: product.id,
+    };
+  }
+
+  async createMonthly(input: CreateSubscriptionInput, userId: string, correlationId?: string) {
+    const resolved = await this.resolveProduct(input);
     const customer = await this.customersService.ensureSynced(input.customerId);
 
     const subscription = await this.prisma.subscription.create({
       data: {
         customerId: input.customerId,
+        productId: resolved.productId,
         createdById: userId,
-        description: input.description,
+        description: resolved.description,
         externalReference: '',
-        amount: new Prisma.Decimal(input.amount),
+        amount: new Prisma.Decimal(resolved.amount),
         status: SubscriptionStatus.PENDING,
         nextDueDate: new Date(input.startDate),
       },
     });
 
-    const externalReference = buildExternalReference('subscription', subscription.id);
+    const subExternalReference = buildExternalReference('subscription', subscription.id);
     await this.prisma.subscription.update({
       where: { id: subscription.id },
-      data: { externalReference },
+      data: { externalReference: subExternalReference },
     });
 
     const order = await this.prisma.paymentOrder.create({
       data: {
         customerId: input.customerId,
+        productId: resolved.productId,
         createdById: userId,
-        description: input.description,
+        description: resolved.description,
         type: PaymentOrderType.SUBSCRIPTION_INITIAL,
         method: PaymentMethod.CREDIT_CARD,
-        amount: new Prisma.Decimal(input.amount),
-        externalReference: buildExternalReference('payment_order', subscription.id),
+        amount: new Prisma.Decimal(resolved.amount),
+        externalReference: '',
         status: PaymentOrderStatus.PENDING,
         dueDate: new Date(input.startDate),
         subscriptionId: subscription.id,
         internalNote: input.internalNote,
         idempotencyKey: input.idempotencyKey,
       },
+    });
+
+    const orderExternalReference = buildExternalReference('payment_order', order.id);
+    await this.prisma.paymentOrder.update({
+      where: { id: order.id },
+      data: { externalReference: orderExternalReference },
+    });
+
+    const checkoutRecord = await this.checkoutsService.createRecord({
+      paymentOrderId: order.id,
+      subscriptionId: subscription.id,
+      type: CheckoutType.CREDIT_CARD_SUBSCRIPTION,
+      status: CheckoutStatus.CREATING,
+      expiresAt: new Date(Date.now() + 1440 * 60_000),
     });
 
     try {
@@ -89,16 +138,23 @@ export class SubscriptionsService {
           cpfCnpj: customer.cpfCnpj,
           phone: customer.phone ?? undefined,
         },
-        description: input.description,
-        amount: input.amount,
+        description: resolved.description,
+        amount: resolved.amount,
         dueDate: input.startDate,
         subscriptionStartDate: input.startDate,
         cycle: 'MONTHLY',
-        externalReference: order.externalReference,
-        successUrl: `${this.config.webUrl}/checkout/success?ref=${order.externalReference}`,
-        cancelUrl: `${this.config.webUrl}/checkout/canceled?ref=${order.externalReference}`,
-        expiredUrl: `${this.config.webUrl}/checkout/error?ref=${order.externalReference}`,
+        externalReference: orderExternalReference,
+        successUrl: `${this.config.webUrl}/checkout/success?ref=${orderExternalReference}`,
+        cancelUrl: `${this.config.webUrl}/checkout/canceled?ref=${orderExternalReference}`,
+        expiredUrl: `${this.config.webUrl}/checkout/error?ref=${orderExternalReference}`,
       });
+
+      await this.checkoutsService.markCreated(
+        checkoutRecord.id,
+        checkout.id,
+        checkout.url,
+        checkout as unknown as object,
+      );
 
       await this.prisma.paymentOrder.update({
         where: { id: order.id },
@@ -115,16 +171,19 @@ export class SubscriptionsService {
         entityType: 'SUBSCRIPTION',
         entityId: subscription.id,
         correlationId,
+        metadata: { checkoutId: checkoutRecord.id },
       });
 
       return {
         subscriptionId: subscription.id,
         paymentOrderId: order.id,
+        checkoutId: checkoutRecord.id,
         status: PaymentOrderStatus.CHECKOUT_CREATED,
         checkoutUrl: checkout.url,
-        externalReference: order.externalReference,
+        externalReference: orderExternalReference,
       };
     } catch {
+      await this.checkoutsService.markFailed(checkoutRecord.id);
       await this.prisma.subscription.update({
         where: { id: subscription.id },
         data: { status: SubscriptionStatus.FAILED },
@@ -136,16 +195,26 @@ export class SubscriptionsService {
     }
   }
 
-  async findAll(page = 1, limit = 20) {
+  async findAll(page = 1, limit = 20, filters?: { status?: SubscriptionStatus; customerId?: string; productId?: string }) {
     const skip = (page - 1) * limit;
+    const where = {
+      ...(filters?.status ? { status: filters.status } : {}),
+      ...(filters?.customerId ? { customerId: filters.customerId } : {}),
+      ...(filters?.productId ? { productId: filters.productId } : {}),
+    };
     const [data, total] = await Promise.all([
       this.prisma.subscription.findMany({
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { customer: { select: { id: true, name: true, email: true } } },
+        include: {
+          customer: { select: { id: true, name: true, email: true } },
+          product: { select: { id: true, name: true, price: true } },
+          _count: { select: { payments: true } },
+        },
       }),
-      this.prisma.subscription.count(),
+      this.prisma.subscription.count({ where }),
     ]);
     return { data, meta: { total, page, limit, totalPages: Math.ceil(total / limit) } };
   }
@@ -155,7 +224,10 @@ export class SubscriptionsService {
       where: { id },
       include: {
         customer: true,
-        payments: { orderBy: { createdAt: 'desc' } },
+        product: true,
+        payments: { orderBy: { createdAt: 'asc' } },
+        checkout: true,
+        paymentOrders: { include: { checkout: true } },
       },
     });
     if (!sub) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Assinatura não encontrada.' });

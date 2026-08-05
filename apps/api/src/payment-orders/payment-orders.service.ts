@@ -9,16 +9,29 @@ import {
   PaymentOrderStatus,
   PaymentOrderType,
   PaymentProvider,
+  ProductType,
   buildExternalReference,
   isPaymentOrderTerminal,
 } from '@asaas-lab/shared';
-import { Prisma } from '@prisma/client';
+import { CheckoutStatus, CheckoutType, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PAYMENT_PROVIDER_TOKEN } from '../asaas/payment-provider.token';
 import { CustomersService } from '../customers/customers.service';
+import { ProductsService } from '../products/products.service';
+import { CheckoutsService } from '../checkouts/checkouts.service';
 import { AuditService } from '../audit/audit.service';
 import { AppConfigService } from '../common/config/app-config.service';
 import { ERROR_CODES } from '../common/constants/error-codes';
+
+interface CreateOrderInput {
+  customerId: string;
+  productId?: string;
+  description?: string;
+  amount?: number;
+  dueDate: string;
+  internalNote?: string;
+  idempotencyKey?: string;
+}
 
 @Injectable()
 export class PaymentOrdersService {
@@ -26,61 +39,67 @@ export class PaymentOrdersService {
     private readonly prisma: PrismaService,
     @Inject(PAYMENT_PROVIDER_TOKEN) private readonly provider: PaymentProvider,
     private readonly customersService: CustomersService,
+    private readonly productsService: ProductsService,
+    private readonly checkoutsService: CheckoutsService,
     private readonly audit: AuditService,
     private readonly config: AppConfigService,
   ) {}
 
-  async createPix(
-    input: {
-      customerId: string;
-      description: string;
-      amount: number;
-      dueDate: string;
-      internalNote?: string;
-      idempotencyKey?: string;
-    },
-    userId: string,
-    correlationId?: string,
-  ) {
+  async createPix(input: CreateOrderInput, userId: string, correlationId?: string) {
     return this.createCheckout(input, PaymentMethod.PIX, PaymentOrderType.ONE_TIME, userId, correlationId);
   }
 
-  async createCreditCard(
-    input: {
-      customerId: string;
-      description: string;
-      amount: number;
-      dueDate: string;
-      internalNote?: string;
-      idempotencyKey?: string;
-    },
-    userId: string,
-    correlationId?: string,
-  ) {
+  async createCreditCard(input: CreateOrderInput, userId: string, correlationId?: string) {
     return this.createCheckout(input, PaymentMethod.CREDIT_CARD, PaymentOrderType.ONE_TIME, userId, correlationId);
   }
 
+  private async resolveProduct(input: CreateOrderInput) {
+    if (!input.productId) {
+      if (!input.description || !input.amount) {
+        throw new BadRequestException({
+          code: 'VALIDATION_ERROR',
+          message: 'Informe productId ou description + amount.',
+        });
+      }
+      return { description: input.description, amount: input.amount, productId: undefined };
+    }
+
+    const product = await this.productsService.findOne(input.productId);
+    if (!product.isActive) {
+      throw new BadRequestException({ code: 'VALIDATION_ERROR', message: 'Produto inativo.' });
+    }
+    if (product.type !== ProductType.ONE_TIME) {
+      throw new BadRequestException({
+        code: 'VALIDATION_ERROR',
+        message: 'Produto não é do tipo ONE_TIME.',
+      });
+    }
+    return {
+      description: product.description,
+      amount: Number(product.price),
+      productId: product.id,
+      productName: product.name,
+    };
+  }
+
   private async createCheckout(
-    input: {
-      customerId: string;
-      description: string;
-      amount: number;
-      dueDate: string;
-      internalNote?: string;
-      idempotencyKey?: string;
-    },
+    input: CreateOrderInput,
     method: PaymentMethod,
     type: PaymentOrderType,
     userId: string,
     correlationId?: string,
   ) {
+    const resolved = await this.resolveProduct(input);
+
     if (input.idempotencyKey) {
       const existing = await this.prisma.paymentOrder.findUnique({
         where: { idempotencyKey: input.idempotencyKey },
+        include: { checkout: true },
       });
       if (existing && !isPaymentOrderTerminal(existing.status as PaymentOrderStatus) && existing.checkoutUrl) {
         return {
           paymentOrderId: existing.id,
+          checkoutId: existing.checkout?.id,
           status: existing.status,
           checkoutUrl: existing.checkoutUrl,
           externalReference: existing.externalReference,
@@ -93,11 +112,12 @@ export class PaymentOrdersService {
     const order = await this.prisma.paymentOrder.create({
       data: {
         customerId: input.customerId,
+        productId: resolved.productId,
         createdById: userId,
-        description: input.description,
+        description: resolved.description,
         type,
         method,
-        amount: new Prisma.Decimal(input.amount),
+        amount: new Prisma.Decimal(resolved.amount),
         externalReference: '',
         idempotencyKey: input.idempotencyKey,
         status: PaymentOrderStatus.PENDING,
@@ -112,6 +132,16 @@ export class PaymentOrdersService {
       data: { externalReference },
     });
 
+    const checkoutType =
+      method === PaymentMethod.PIX ? CheckoutType.PIX_ONE_TIME : CheckoutType.CREDIT_CARD_ONE_TIME;
+
+    const checkoutRecord = await this.checkoutsService.createRecord({
+      paymentOrderId: order.id,
+      type: checkoutType,
+      status: CheckoutStatus.CREATING,
+      expiresAt: new Date(Date.now() + 1440 * 60_000),
+    });
+
     const checkoutInput = {
       customerId: customer.asaasCustomerId!,
       customerData: {
@@ -120,8 +150,8 @@ export class PaymentOrdersService {
         cpfCnpj: customer.cpfCnpj,
         phone: customer.phone ?? undefined,
       },
-      description: input.description,
-      amount: input.amount,
+      description: resolved.description,
+      amount: resolved.amount,
       dueDate: input.dueDate,
       externalReference,
       successUrl: `${this.config.webUrl}/checkout/success?ref=${externalReference}`,
@@ -134,6 +164,13 @@ export class PaymentOrdersService {
         method === PaymentMethod.PIX
           ? await this.provider.createPixCheckout(checkoutInput)
           : await this.provider.createCreditCardCheckout(checkoutInput);
+
+      await this.checkoutsService.markCreated(
+        checkoutRecord.id,
+        checkout.id,
+        checkout.url,
+        checkout as unknown as object,
+      );
 
       const updated = await this.prisma.paymentOrder.update({
         where: { id: order.id },
@@ -150,16 +187,18 @@ export class PaymentOrdersService {
         entityType: 'PAYMENT_ORDER',
         entityId: order.id,
         correlationId,
-        metadata: { method, amount: input.amount },
+        metadata: { method, amount: resolved.amount, checkoutId: checkoutRecord.id },
       });
 
       return {
         paymentOrderId: updated.id,
+        checkoutId: checkoutRecord.id,
         status: updated.status,
         checkoutUrl: updated.checkoutUrl!,
         externalReference,
       };
     } catch (error) {
+      await this.checkoutsService.markFailed(checkoutRecord.id);
       await this.prisma.paymentOrder.update({
         where: { id: order.id },
         data: {
@@ -181,7 +220,11 @@ export class PaymentOrdersService {
         skip,
         take: limit,
         orderBy: { createdAt: 'desc' },
-        include: { customer: { select: { id: true, name: true, email: true } } },
+        include: {
+          customer: { select: { id: true, name: true, email: true } },
+          product: { select: { id: true, name: true, price: true } },
+          checkout: true,
+        },
       }),
       this.prisma.paymentOrder.count(),
     ]);
@@ -193,7 +236,9 @@ export class PaymentOrdersService {
       where: { id },
       include: {
         customer: true,
+        product: true,
         payments: true,
+        checkout: true,
       },
     });
     if (!order) throw new NotFoundException({ code: 'NOT_FOUND', message: 'Ordem não encontrada.' });
@@ -203,7 +248,7 @@ export class PaymentOrdersService {
   async findByExternalReference(externalReference: string) {
     return this.prisma.paymentOrder.findUnique({
       where: { externalReference },
-      include: { customer: true, payments: true },
+      include: { customer: true, payments: true, checkout: true, product: true },
     });
   }
 }

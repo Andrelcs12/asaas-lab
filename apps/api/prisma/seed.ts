@@ -4,6 +4,8 @@ import {
   PaymentMethod,
   PaymentOrderStatus,
   PaymentOrderType,
+  ProductBillingCycle,
+  ProductType,
   SubscriptionCycle,
   SubscriptionStatus,
   UserRole,
@@ -29,7 +31,7 @@ async function main() {
     },
   });
 
-  const viewer = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: 'viewer@lab.local' },
     update: {},
     create: {
@@ -39,6 +41,61 @@ async function main() {
       role: UserRole.VIEWER,
     },
   });
+
+  const products = await Promise.all([
+    prisma.product.upsert({
+      where: { id: '00000000-0000-4000-8000-000000000101' },
+      update: {},
+      create: {
+        id: '00000000-0000-4000-8000-000000000101',
+        name: 'Pagamento PIX de teste',
+        description: 'Produto utilizado para testar compra única via PIX.',
+        type: ProductType.ONE_TIME,
+        price: 15.0,
+        billingCycle: ProductBillingCycle.NONE,
+        isActive: true,
+      },
+    }),
+    prisma.product.upsert({
+      where: { id: '00000000-0000-4000-8000-000000000102' },
+      update: {},
+      create: {
+        id: '00000000-0000-4000-8000-000000000102',
+        name: 'Pagamento com cartão',
+        description: 'Produto utilizado para testar compra única no cartão de crédito.',
+        type: ProductType.ONE_TIME,
+        price: 25.0,
+        billingCycle: ProductBillingCycle.NONE,
+        isActive: true,
+      },
+    }),
+    prisma.product.upsert({
+      where: { id: '00000000-0000-4000-8000-000000000103' },
+      update: {},
+      create: {
+        id: '00000000-0000-4000-8000-000000000103',
+        name: 'Plano mensal básico',
+        description: 'Assinatura mensal utilizada para testar recorrência.',
+        type: ProductType.SUBSCRIPTION,
+        price: 39.9,
+        billingCycle: ProductBillingCycle.MONTHLY,
+        isActive: true,
+      },
+    }),
+    prisma.product.upsert({
+      where: { id: '00000000-0000-4000-8000-000000000104' },
+      update: {},
+      create: {
+        id: '00000000-0000-4000-8000-000000000104',
+        name: 'Plano mensal profissional',
+        description: 'Assinatura mensal utilizada para testar renovação e cancelamento.',
+        type: ProductType.SUBSCRIPTION,
+        price: 79.9,
+        billingCycle: ProductBillingCycle.MONTHLY,
+        isActive: true,
+      },
+    }),
+  ]);
 
   const customers = await Promise.all([
     prisma.customer.upsert({
@@ -84,11 +141,12 @@ async function main() {
   const orderPending1 = await prisma.paymentOrder.create({
     data: {
       customerId: customers[0].id,
+      productId: products[0].id,
       createdById: admin.id,
-      description: 'Pagamento PIX de demonstração',
+      description: products[0].description,
       type: PaymentOrderType.ONE_TIME,
       method: PaymentMethod.PIX,
-      amount: 150.0,
+      amount: products[0].price,
       externalReference: 'payment_order_seed_001',
       status: PaymentOrderStatus.CHECKOUT_CREATED,
       checkoutUrl: 'https://sandbox.asaas.com/checkoutSession/show/seed-001',
@@ -99,11 +157,12 @@ async function main() {
   const orderPending2 = await prisma.paymentOrder.create({
     data: {
       customerId: customers[0].id,
+      productId: products[1].id,
       createdById: admin.id,
-      description: 'Pagamento cartão de demonstração',
+      description: products[1].description,
       type: PaymentOrderType.ONE_TIME,
       method: PaymentMethod.CREDIT_CARD,
-      amount: 299.9,
+      amount: products[1].price,
       externalReference: 'payment_order_seed_002',
       status: PaymentOrderStatus.CHECKOUT_CREATED,
       checkoutUrl: 'https://sandbox.asaas.com/checkoutSession/show/seed-002',
@@ -120,8 +179,8 @@ async function main() {
       billingType: PaymentMethod.PIX,
       asaasStatus: 'CONFIRMED',
       internalStatus: InternalPaymentStatus.CONFIRMED,
-      value: 150.0,
-      netValue: 147.5,
+      value: 15.0,
+      netValue: 14.5,
       dueDate: new Date(),
       confirmedDate: new Date(),
     },
@@ -135,7 +194,7 @@ async function main() {
       billingType: PaymentMethod.CREDIT_CARD,
       asaasStatus: 'PENDING',
       internalStatus: InternalPaymentStatus.PENDING,
-      value: 299.9,
+      value: 25.0,
       dueDate: new Date(Date.now() + 3 * 86400000),
     },
   });
@@ -143,12 +202,13 @@ async function main() {
   const activeSub = await prisma.subscription.create({
     data: {
       customerId: customers[2].id,
+      productId: products[2].id,
       createdById: admin.id,
-      description: 'Assinatura mensal Lab Pro',
+      description: products[2].description,
       externalReference: 'subscription_seed_active',
       asaasSubscriptionId: 'sub_seed_active',
       cycle: SubscriptionCycle.MONTHLY,
-      amount: 99.9,
+      amount: products[2].price,
       status: SubscriptionStatus.ACTIVE,
       asaasStatus: 'ACTIVE',
       nextDueDate: new Date(Date.now() + 30 * 86400000),
@@ -158,12 +218,13 @@ async function main() {
   await prisma.subscription.create({
     data: {
       customerId: customers[2].id,
+      productId: products[3].id,
       createdById: admin.id,
-      description: 'Assinatura pausada Lab Basic',
+      description: products[3].description,
       externalReference: 'subscription_seed_paused',
       asaasSubscriptionId: 'sub_seed_paused',
       cycle: SubscriptionCycle.MONTHLY,
-      amount: 49.9,
+      amount: products[3].price,
       status: SubscriptionStatus.PAUSED,
       asaasStatus: 'INACTIVE',
       pausedAt: new Date(),
@@ -178,7 +239,7 @@ async function main() {
       billingType: PaymentMethod.CREDIT_CARD,
       asaasStatus: 'CONFIRMED',
       internalStatus: InternalPaymentStatus.CONFIRMED,
-      value: 99.9,
+      value: 39.9,
       renewalNumber: 1,
       confirmedDate: new Date(),
     },
@@ -215,6 +276,7 @@ async function main() {
         lastError: 'Cliente não encontrado (dados fictícios de seed)',
       },
     ],
+    skipDuplicates: true,
   });
 
   console.log('Seed concluído.');

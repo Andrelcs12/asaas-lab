@@ -1,8 +1,19 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
+  --background: #fafafa;
+  --foreground: #09090b;
+  --card: #ffffff;
+  --border: #e4e4e7;
+}
+
+.dark {
   --background: #09090b;
   --foreground: #fafafa;
+  --card: #18181b;
+  --border: #27272a;
 }
 
 body {
@@ -12,5 +23,5 @@ body {
 }
 
 * {
-  border-color: #27272a;
+  border-color: var(--border);
 }

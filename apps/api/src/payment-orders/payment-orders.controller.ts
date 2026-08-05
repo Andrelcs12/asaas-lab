@@ -9,8 +9,9 @@ import { CorrelationId, CurrentUser, Roles } from '../common/decorators';
 
 class CreatePaymentOrderDto {
   @IsUUID() customerId!: string;
-  @IsString() @MinLength(3) description!: string;
-  @IsNumber() @Min(0.01) amount!: number;
+  @IsOptional() @IsUUID() productId?: string;
+  @IsOptional() @IsString() @MinLength(3) description?: string;
+  @IsOptional() @IsNumber() @Min(0.01) amount?: number;
   @IsString() dueDate!: string;
   @IsOptional() @IsString() internalNote?: string;
   @IsOptional() @IsString() idempotencyKey?: string;

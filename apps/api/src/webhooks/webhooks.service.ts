@@ -11,6 +11,7 @@ import { WebhookEventStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PaymentOrdersService } from '../payment-orders/payment-orders.service';
+import { CheckoutsService } from '../checkouts/checkouts.service';
 import { AppConfigService } from '../common/config/app-config.service';
 
 const MAX_ATTEMPTS = 5;
@@ -24,6 +25,7 @@ export class WebhooksService {
     private readonly prisma: PrismaService,
     private readonly paymentsService: PaymentsService,
     private readonly paymentOrdersService: PaymentOrdersService,
+    private readonly checkoutsService: CheckoutsService,
     private readonly config: AppConfigService,
   ) {}
 
@@ -143,7 +145,7 @@ export class WebhooksService {
     }
 
     if (eventType.startsWith('CHECKOUT_')) {
-      this.logger.debug(`Checkout event ignored for processing: ${eventType}`);
+      await this.checkoutsService.handleCheckoutEvent(eventType, payload);
       return;
     }
 
@@ -184,6 +186,7 @@ export class WebhooksService {
     const renewalCount = subscriptionId
       ? await this.prisma.payment.count({ where: { subscriptionId } })
       : undefined;
+    const renewalNumber = subscriptionId ? (renewalCount ?? 0) + 1 : undefined;
 
     await this.paymentsService.upsertFromWebhook({
       asaasPaymentId,
@@ -202,7 +205,7 @@ export class WebhooksService {
         billingType: payment.billingType ? String(payment.billingType) : undefined,
         invoiceUrl: payment.invoiceUrl ? String(payment.invoiceUrl) : undefined,
       },
-      renewalNumber: renewalCount,
+      renewalNumber,
     });
 
     if (order) {
@@ -221,7 +224,7 @@ export class WebhooksService {
     }
   }
 
-  private async handleSubscriptionEvent(_eventType: string, subscription: Record<string, unknown>) {
+  private async handleSubscriptionEvent(eventType: string, subscription: Record<string, unknown>) {
     const asaasSubscriptionId = String(subscription.id);
     const externalReference = subscription.externalReference ? String(subscription.externalReference) : undefined;
 
@@ -236,15 +239,30 @@ export class WebhooksService {
       local = await this.prisma.subscription.findUnique({ where: { id } });
     }
 
+    if (!local && externalReference?.startsWith('payment_order_')) {
+      const orderId = externalReference.replace('payment_order_', '');
+      const order = await this.prisma.paymentOrder.findUnique({
+        where: { id: orderId },
+        select: { subscriptionId: true },
+      });
+      if (order?.subscriptionId) {
+        local = await this.prisma.subscription.findUnique({ where: { id: order.subscriptionId } });
+      }
+    }
+
     if (!local) return;
 
     const asaasStatus = String(subscription.status ?? 'ACTIVE');
+    const isCreated = eventType === 'SUBSCRIPTION_CREATED';
+
     await this.prisma.subscription.update({
       where: { id: local.id },
       data: {
         asaasSubscriptionId,
         asaasStatus,
-        status: mapAsaasSubscriptionToInternal(asaasStatus),
+        status: isCreated && asaasStatus === 'ACTIVE'
+          ? SubscriptionStatus.ACTIVE
+          : mapAsaasSubscriptionToInternal(asaasStatus),
         nextDueDate: subscription.nextDueDate ? new Date(String(subscription.nextDueDate)) : local.nextDueDate,
         rawData: subscription as object,
         ...(asaasStatus === 'INACTIVE' ? { pausedAt: new Date() } : {}),

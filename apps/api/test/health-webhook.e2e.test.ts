@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Test } from '@nestjs/testing';
 import {
   FastifyAdapter,
@@ -8,30 +8,48 @@ import {
 import type { InjectOptions, LightMyRequestResponse } from 'light-my-request';
 import { HealthController } from '../src/health/health.controller';
 import { AsaasWebhookController } from '../src/webhooks/controllers/asaas-webhook.controller';
-import { AsaasWebhookService } from '../src/webhooks/services/asaas-webhook.service';
+import { WebhooksService } from '../src/webhooks/webhooks.service';
 import { AppConfigService } from '../src/common/config/app-config.service';
 import { PAYMENT_PROVIDER_TOKEN } from '../src/asaas/payment-provider.token';
 import { PrismaService } from '../src/prisma/prisma.service';
+import { PaymentsService } from '../src/payments/payments.service';
+import { PaymentOrdersService } from '../src/payment-orders/payment-orders.service';
+import { CheckoutsService } from '../src/checkouts/checkouts.service';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 
 const WEBHOOK_TOKEN = 'test-webhook-token-local';
 
-const mockConfig = {
-  asaasEnv: 'sandbox',
-  asaasWebhookAuthToken: WEBHOOK_TOKEN,
-  webUrl: 'http://localhost:3000',
-  port: 3001,
-} as AppConfigService;
+function createMockConfig(overrides: Partial<AppConfigService> = {}) {
+  return {
+    asaasEnv: 'sandbox',
+    asaasWebhookAuthToken: WEBHOOK_TOKEN,
+    webUrl: 'http://localhost:3000',
+    port: 3001,
+    hasDatabase: true,
+    ...overrides,
+  } as AppConfigService;
+}
+
+const mockPrisma = {
+  webhookEvent: {
+    findUnique: vi.fn().mockResolvedValue(null),
+    create: vi.fn().mockResolvedValue({ id: 'evt-local-1' }),
+  },
+};
 
 async function createTestApp(
   controllers: Array<typeof HealthController | typeof AsaasWebhookController>,
-  providers: Parameters<typeof Test.createTestingModule>[0]['providers'] = [],
+  config = createMockConfig(),
 ): Promise<NestFastifyApplication> {
   const moduleRef = await Test.createTestingModule({
     controllers,
     providers: [
-      ...providers,
-      { provide: AppConfigService, useValue: mockConfig },
+      WebhooksService,
+      { provide: AppConfigService, useValue: config },
+      { provide: PrismaService, useValue: mockPrisma },
+      { provide: PaymentsService, useValue: { upsertFromWebhook: vi.fn() } },
+      { provide: PaymentOrdersService, useValue: { findByExternalReference: vi.fn() } },
+      { provide: CheckoutsService, useValue: { handleCheckoutEvent: vi.fn() } },
     ],
   }).compile();
 
@@ -56,7 +74,7 @@ describe('GET /health (e2e)', () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [HealthController],
       providers: [
-        { provide: AppConfigService, useValue: mockConfig },
+        { provide: AppConfigService, useValue: createMockConfig() },
         { provide: PrismaService, useValue: { $queryRaw: async () => [{ '?column?': 1 }] } },
         {
           provide: PAYMENT_PROVIDER_TOKEN,
@@ -92,7 +110,7 @@ describe('POST /webhooks/asaas (e2e)', () => {
   let app: NestFastifyApplication;
 
   beforeAll(async () => {
-    app = await createTestApp([AsaasWebhookController], [AsaasWebhookService]);
+    app = await createTestApp([AsaasWebhookController]);
   });
 
   afterAll(async () => {
@@ -122,7 +140,7 @@ describe('POST /webhooks/asaas (e2e)', () => {
     expect(response.statusCode).toBe(401);
   });
 
-  it('com token correto retorna HTTP 200', async () => {
+  it('com token correto persiste evento e retorna HTTP 200', async () => {
     const response = await inject(app, {
       method: 'POST',
       url: '/webhooks/asaas',
@@ -143,11 +161,12 @@ describe('POST /webhooks/asaas (e2e)', () => {
     });
 
     expect(response.statusCode).toBe(200);
-    expect(response.statusCode).not.toBe(201);
-    expect(response.json()).toEqual({ received: true, eventId: 'evt_test_001' });
+    expect(response.json()).toEqual({ received: true, duplicate: false });
+    expect(mockPrisma.webhookEvent.create).toHaveBeenCalled();
   });
 
-  it('aceita campos adicionais no payload', async () => {
+  it('evento duplicado retorna 200 sem recriar', async () => {
+    mockPrisma.webhookEvent.findUnique.mockResolvedValueOnce({ id: 'existing' });
     const response = await inject(app, {
       method: 'POST',
       url: '/webhooks/asaas',
@@ -156,40 +175,25 @@ describe('POST /webhooks/asaas (e2e)', () => {
         'asaas-access-token': WEBHOOK_TOKEN,
       },
       payload: {
-        id: 'evt_test_extra',
+        id: 'evt_test_dup',
         event: 'PAYMENT_RECEIVED',
-        novoCampoAsaas: 'valor-desconhecido',
         payment: { id: 'pay_extra', status: 'RECEIVED' },
       },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().eventId).toBe('evt_test_extra');
+    expect(response.json()).toEqual({ received: true, duplicate: true });
   });
 });
 
-describe('AsaasWebhookService — token não configurado', () => {
+describe('POST /webhooks/asaas — token não configurado', () => {
   let app: NestFastifyApplication;
 
   afterAll(async () => {
     await app?.close();
   });
 
-  it('retorna HTTP 500 quando ASAAS_WEBHOOK_AUTH_TOKEN está ausente', async () => {
-    const moduleRef = await Test.createTestingModule({
-      controllers: [AsaasWebhookController],
-      providers: [
-        AsaasWebhookService,
-        {
-          provide: AppConfigService,
-          useValue: { ...mockConfig, asaasWebhookAuthToken: '' },
-        },
-      ],
-    }).compile();
-
-    app = moduleRef.createNestApplication(new FastifyAdapter());
-    app.useGlobalFilters(new GlobalExceptionFilter());
-    await app.init();
-    await app.getHttpAdapter().getInstance().ready();
+  it('retorna HTTP 401 quando ASAAS_WEBHOOK_AUTH_TOKEN está ausente', async () => {
+    app = await createTestApp([AsaasWebhookController], createMockConfig({ asaasWebhookAuthToken: '' }));
 
     const response = await inject(app, {
       method: 'POST',
@@ -201,6 +205,6 @@ describe('AsaasWebhookService — token não configurado', () => {
       payload: { id: 'evt_no_token', event: 'PAYMENT_CONFIRMED' },
     });
 
-    expect(response.statusCode).toBe(500);
+    expect(response.statusCode).toBe(401);
   });
 });
